@@ -39,11 +39,15 @@ export const router = createHashRouter([
             path: 'folder/:folderId',
             element: <DashboardPage />,
           },
-          {
-            path: 'work/:workId',
-            element: <EditorPage />,
-          },
         ],
+      },
+      {
+        path: 'work/:workId',
+        element: (
+          <ProtectedRoute>
+            <EditorPage />
+          </ProtectedRoute>
+        ),
       },
     ],
   },

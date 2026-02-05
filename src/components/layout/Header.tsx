@@ -5,6 +5,7 @@ import { useFolders } from '../../hooks/useFolders';
 import { useWorks } from '../../hooks/useWorks';
 import { NewButtonDropdown } from './NewButtonDropdown';
 import { CreateFolderDialog } from '../folders/CreateFolderDialog';
+import { CreateWorkDialog } from '../works/CreateWorkDialog';
 
 export function Header() {
   const { user, signOut } = useAuth();
@@ -13,9 +14,11 @@ export function Header() {
   const { createFolder } = useFolders();
   const { createWork } = useWorks();
   const [showCreateFolder, setShowCreateFolder] = useState(false);
+  const [showCreateWork, setShowCreateWork] = useState(false);
 
-  const handleNewWork = async () => {
-    const work = await createWork(folderId ?? null);
+  const handleCreateWork = async (title: string) => {
+    const work = await createWork(title, folderId ?? null);
+    setShowCreateWork(false);
     if (work) {
       navigate(`/work/${work.id}`);
     }
@@ -33,7 +36,7 @@ export function Header() {
         <div className="flex items-center gap-3">
           <span className="font-semibold">Writing Service</span>
           <NewButtonDropdown
-            onNewWork={handleNewWork}
+            onNewWork={() => setShowCreateWork(true)}
             onNewFolder={() => setShowCreateFolder(true)}
           />
         </div>
@@ -51,6 +54,12 @@ export function Header() {
         <CreateFolderDialog
           onConfirm={handleCreateFolder}
           onCancel={() => setShowCreateFolder(false)}
+        />
+      )}
+      {showCreateWork && (
+        <CreateWorkDialog
+          onConfirm={handleCreateWork}
+          onCancel={() => setShowCreateWork(false)}
         />
       )}
     </>
