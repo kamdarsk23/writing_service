@@ -67,5 +67,23 @@ export function useFolders() {
     return { error };
   };
 
-  return { folders, tree, loading, fetchFolders, createFolder, renameFolder, deleteFolder };
+  const moveFolder = async (folderId: string, newParentId: string | null) => {
+    const { error } = await supabase
+      .from('folders')
+      .update({ parent_id: newParentId })
+      .eq('id', folderId);
+    if (!error) await fetchFolders();
+    return { error };
+  };
+
+  const getChildFolders = useCallback(
+    (parentId: string | null) => {
+      return folders.filter((f) =>
+        parentId ? f.parent_id === parentId : !f.parent_id,
+      );
+    },
+    [folders],
+  );
+
+  return { folders, tree, loading, fetchFolders, createFolder, renameFolder, deleteFolder, moveFolder, getChildFolders };
 }
