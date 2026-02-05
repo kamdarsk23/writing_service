@@ -220,3 +220,37 @@ Also removed ESLint dev dependencies from `package.json`:
 - Removed `"lint": "eslint ."` script
 
 **Build verified after cleanup** — TypeScript compiles, Vite builds successfully
+
+---
+
+## Bug Fix: EditorPage infinite re-render / loading flicker
+
+### Status: Complete
+
+### Symptom
+Opening a work in the editor caused rapid flickering between "Loading..." and the editor UI. Typing in the title field also re-triggered the loading flash.
+
+### Root Cause (two bugs)
+
+**Bug 1: `fetchWork` not memoized in `useWorks.ts`**
+
+`fetchWork` was a plain async function (not wrapped in `useCallback`), so it got a new reference on every render. The `useEffect` in `EditorPage` had `fetchWork` in its dependency array, so every re-render triggered the effect, which set `loading = true` (flash), fetched data, set `loading = false` (flash back), causing the next re-render — an infinite loop.
+
+Typing in the title called `setTitle()` → re-render → new `fetchWork` ref → effect re-runs → loading flash on every keystroke.
+
+**Bug 2: `editor` in the useEffect dependency array**
+
+TipTap's `useEditor` returns `null` initially, then the real editor instance once initialized. This change triggered the effect a second time, causing a double-fetch and double loading flash on initial load.
+
+### Fix Applied
+
+1. **`useWorks.ts`**: Wrapped `fetchWork` in `useCallback` with empty dependency array (it only uses `supabase` which is a module-level singleton)
+
+2. **`EditorPage.tsx`**: Split the single `useEffect` into two:
+   - **Effect 1** (fetch data): depends on `[workId, fetchWork, navigate]` only — no `editor` dependency. Stores fetched content in `loadedContentRef`
+   - **Effect 2** (sync to editor): depends on `[editor, loading]` — once both the editor is ready AND data has loaded, pushes content into TipTap via `setContent()`
+
+### Additional Changes
+- Removed `saveStatus` state and "Saved" indicator (unnecessary for MVP)
+- Save button now navigates back to dashboard after saving
+- Simplified `TitleInput` onChange (no longer tracks save status)

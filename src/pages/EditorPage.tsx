@@ -13,18 +13,18 @@ export function EditorPage() {
   const [title, setTitle] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [saveStatus, setSaveStatus] = useState<'idle' | 'saved'>('idle');
   const contentRef = useRef<Record<string, unknown>>({});
+  const loadedContentRef = useRef<Record<string, unknown>>({});
 
   const editor = useEditor({
     extensions: [StarterKit],
     content: {},
     onUpdate: ({ editor }) => {
       contentRef.current = editor.getJSON() as Record<string, unknown>;
-      setSaveStatus('idle');
     },
   });
 
+  // Effect 1: Fetch work data (only depends on workId and fetchWork)
   useEffect(() => {
     if (!workId) return;
     setLoading(true);
@@ -32,22 +32,27 @@ export function EditorPage() {
       if (work) {
         setTitle(work.title);
         contentRef.current = work.content;
-        if (editor && Object.keys(work.content).length > 0) {
-          editor.commands.setContent(work.content);
-        }
+        loadedContentRef.current = work.content;
       } else {
         navigate('/');
       }
       setLoading(false);
     });
-  }, [workId, fetchWork, navigate, editor]);
+  }, [workId, fetchWork, navigate]);
+
+  // Effect 2: Sync loaded content into editor once editor is ready
+  useEffect(() => {
+    if (editor && !loading && Object.keys(loadedContentRef.current).length > 0) {
+      editor.commands.setContent(loadedContentRef.current);
+    }
+  }, [editor, loading]);
 
   const handleSave = async () => {
     if (!workId) return;
     setSaving(true);
     await updateWork(workId, { title, content: contentRef.current });
     setSaving(false);
-    setSaveStatus('saved');
+    navigate('/');
   };
 
   if (loading) {
@@ -71,17 +76,8 @@ export function EditorPage() {
         >
           {saving ? 'Saving...' : 'Save'}
         </button>
-        {saveStatus === 'saved' && (
-          <span className="text-green-600 text-xs">Saved</span>
-        )}
       </div>
-      <TitleInput
-        value={title}
-        onChange={(v) => {
-          setTitle(v);
-          setSaveStatus('idle');
-        }}
-      />
+      <TitleInput value={title} onChange={setTitle} />
       <EditorToolbar editor={editor} />
       <div className="prose max-w-none flex-1">
         <EditorContent editor={editor} className="min-h-[300px]" />
