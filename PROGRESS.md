@@ -171,24 +171,52 @@ All source files for authentication, layout, folders, works, and editor were cre
 
 ---
 
-## Phase 2: Supabase Setup — USER ACTION REQUIRED
+## Phase 2: Supabase Setup
 
-### Status: Awaiting user action
+### Status: Complete
 
-Schema SQL is written at `supabase/schema.sql`. The user needs to:
-
-1. Create a Supabase project
-2. Run the schema SQL
-3. Provide the project URL and anon key
-
-See the prompt below for detailed instructions.
+- User created Supabase project and ran `supabase/schema.sql`
+- User created `.env` with `VITE_SUPABASE_PROJECT_URL` and `VITE_SUPABASE_ANON_KEY`
+- Note: Original plan used `VITE_SUPABASE_URL` but user named it `SUPABASE_PROJECT_URL`, so `src/lib/supabase.ts` and `.env.example` were updated to use `VITE_SUPABASE_PROJECT_URL` to match
 
 ---
 
 ## Phase 7: Deploy
 
-### Status: Pending
+### Status: Complete
 
-- `vite.config.ts` already has `base: '/writing_service/'`
-- `package.json` has `predeploy` and `deploy` scripts
-- Need user to confirm GitHub repo name and configure GitHub Pages after deploy
+- GitHub repo: `kamdarsk23/writing_service`
+- `vite.config.ts` base path: `/writing_service/`
+- PR created on branch `feat/mvp-writing-workspace`, merged to `main`
+- GitHub Pages deployed by user
+- Live at: `https://kamdarsk23.github.io/writing_service/`
+
+### Git Workflow Used
+1. Created initial commit on `main` with just `.gitignore` (so there was a base to branch from)
+2. Created `feat/mvp-writing-workspace` branch with all 44 project files
+3. Pushed branch, created PR, merged to main
+4. Set `main` as default branch in GitHub settings
+
+---
+
+## Codebase Cleanup
+
+### Status: Complete
+
+Removed unnecessary files to reduce clutter:
+
+| Removed | Reason |
+|---------|--------|
+| `.env.example` | User already has `.env` configured; template no longer needed |
+| `README.md` (old) | Was Vite's boilerplate about ESLint config, not project docs. Replaced with proper project README |
+| `eslint.config.js` | Not using ESLint in current workflow |
+| `src/assets/` | Empty directory (Vite boilerplate artifacts were already deleted earlier) |
+| `public/` | Empty directory (vite.svg was already deleted earlier) |
+| `dist/` | Build output, gitignored, just local clutter |
+| `src/components/editor/Editor.tsx` | Unused standalone component — `EditorPage.tsx` uses `useEditor` + `EditorContent` directly, so this was dead code |
+
+Also removed ESLint dev dependencies from `package.json`:
+- `@eslint/js`, `eslint`, `eslint-plugin-react-hooks`, `eslint-plugin-react-refresh`, `globals`, `typescript-eslint`
+- Removed `"lint": "eslint ."` script
+
+**Build verified after cleanup** — TypeScript compiles, Vite builds successfully
