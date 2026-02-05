@@ -1,73 +1,81 @@
-# React + TypeScript + Vite
+# Writing Service
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A personal writing workspace for creating, organizing, and editing written works. React frontend hosted on GitHub Pages, with Supabase for authentication and data storage.
 
-Currently, two official plugins are available:
+## Features
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- **Authentication** — Email/password sign-up and sign-in via Supabase
+- **Nested Folders** — Organize works in a folder hierarchy (unlimited depth)
+- **Rich Text Editor** — TipTap with bold, italic, headings, lists, blockquotes, code blocks
+- **Per-User Isolation** — Row Level Security ensures each user only sees their own data
+- **Manual Save** — Save button persists title and content to the database
 
-## React Compiler
+## Tech Stack
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+| Layer     | Technology                          |
+| --------- | ----------------------------------- |
+| Frontend  | React 19 + TypeScript               |
+| Build     | Vite                                |
+| Styling   | Tailwind CSS v4                     |
+| Routing   | React Router v7 (hash router)       |
+| Editor    | TipTap (StarterKit)                 |
+| Auth & DB | Supabase                            |
+| Deploy    | GitHub Pages via gh-pages            |
 
-## Expanding the ESLint configuration
+## Setup
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+### 1. Install dependencies
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```
+npm install
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+### 2. Set up Supabase
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+1. Create a project at [supabase.com](https://supabase.com)
+2. Go to **SQL Editor** and run the contents of `supabase/schema.sql`
+3. Go to **Settings > API** and copy the Project URL and anon key
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+### 3. Configure environment
+
+Create a `.env` file in the project root:
+
+```
+VITE_SUPABASE_PROJECT_URL=https://xxxxx.supabase.co
+VITE_SUPABASE_ANON_KEY=eyJ...
+```
+
+### 4. Run locally
+
+```
+npm run dev
+```
+
+### 5. Deploy to GitHub Pages
+
+```
+npm run deploy
+```
+
+This builds the app and pushes the `dist/` folder to the `gh-pages` branch. Make sure GitHub Pages is configured to deploy from that branch in your repo settings.
+
+## Project Structure
+
+```
+src/
+├── main.tsx              # React entry point
+├── App.tsx               # RouterProvider
+├── index.css             # Tailwind imports
+├── router.tsx            # Hash router + route definitions
+├── lib/supabase.ts       # Supabase client singleton
+├── types/                # TypeScript interfaces (Folder, Work, FolderNode)
+├── contexts/             # AuthContext (session state)
+├── hooks/                # useAuth, useFolders, useWorks
+├── components/
+│   ├── auth/             # Login, Signup, ProtectedRoute
+│   ├── layout/           # AppLayout, Header, Sidebar
+│   ├── folders/          # FolderTree, FolderItem, dialogs
+│   ├── works/            # WorksList, WorkCard, EmptyState
+│   └── editor/           # EditorToolbar, TitleInput
+└── pages/                # AuthPage, DashboardPage, EditorPage
 ```
