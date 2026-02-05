@@ -5,10 +5,11 @@ import { WorkCard } from './WorkCard';
 interface WorksListProps {
   works: Work[];
   loading: boolean;
+  columns: number;
   onContextMenu?: (e: React.MouseEvent, workId: string) => void;
 }
 
-export function WorksList({ works, loading, onContextMenu }: WorksListProps) {
+export function WorksList({ works, loading, columns, onContextMenu }: WorksListProps) {
   if (loading) {
     return <p className="text-gray-400 text-center py-8">Loading works...</p>;
   }
@@ -18,7 +19,10 @@ export function WorksList({ works, loading, onContextMenu }: WorksListProps) {
   }
 
   return (
-    <div className="flex flex-col gap-2">
+    <div
+      className="grid gap-3"
+      style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}
+    >
       {works.map((work) => (
         <WorkCard
           key={work.id}

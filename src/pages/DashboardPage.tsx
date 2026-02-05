@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useFolders } from '../hooks/useFolders';
 import { useWorks } from '../hooks/useWorks';
@@ -10,6 +10,18 @@ import { MoveToModal } from '../components/dashboard/MoveToModal';
 import { WorksList } from '../components/works/WorksList';
 import { RenameFolderDialog } from '../components/folders/RenameFolderDialog';
 import { RenameWorkDialog } from '../components/works/RenameWorkDialog';
+import type { Work } from '../types';
+
+type SortKey = 'updated_at' | 'created_at' | 'title';
+
+function sortWorks(works: Work[], key: SortKey): Work[] {
+  return [...works].sort((a, b) => {
+    if (key === 'title') {
+      return a.title.localeCompare(b.title);
+    }
+    return new Date(b[key]).getTime() - new Date(a[key]).getTime();
+  });
+}
 
 export function DashboardPage() {
   const { folderId } = useParams();
@@ -25,6 +37,10 @@ export function DashboardPage() {
   } = useFolders();
   const { works, loading: worksLoading, fetchWorks, deleteWork, moveWork, renameWork } = useWorks();
   const { menu, show: showMenu, hide: hideMenu } = useContextMenu();
+
+  const [searchQuery, setSearchQuery] = useState('');
+  const [sortKey, setSortKey] = useState<SortKey>('updated_at');
+  const [columns, setColumns] = useState(6);
 
   const [moveModalTarget, setMoveModalTarget] = useState<{
     id: string;
@@ -50,12 +66,31 @@ export function DashboardPage() {
   }, [refetch]);
 
   useEffect(() => {
+    setSearchQuery('');
+  }, [folderId]);
+
+  useEffect(() => {
     const handler = () => refetch();
     window.addEventListener('refetch-dashboard', handler);
     return () => window.removeEventListener('refetch-dashboard', handler);
   }, [refetch]);
 
   const childFolders = getChildFolders(folderId ?? null);
+
+  const query = searchQuery.toLowerCase().trim();
+
+  const filteredFolders = useMemo(
+    () => (query ? childFolders.filter((f) => f.name.toLowerCase().includes(query)) : childFolders),
+    [childFolders, query],
+  );
+
+  const filteredAndSortedWorks = useMemo(
+    () => {
+      const filtered = query ? works.filter((w) => w.title.toLowerCase().includes(query)) : works;
+      return sortWorks(filtered, sortKey);
+    },
+    [works, query, sortKey],
+  );
 
   const handleFolderContextMenu = (e: React.MouseEvent, id: string) => {
     showMenu(e, id, 'folder');
@@ -128,16 +163,48 @@ export function DashboardPage() {
   const loading = foldersLoading || worksLoading;
 
   return (
-    <div className="p-6 max-w-3xl">
+    <div className="p-6">
       <Breadcrumbs folders={folders} currentFolderId={folderId} />
+
+      {/* Toolbar: search, sort, columns */}
+      <div className="flex items-center gap-3 mb-4 flex-wrap">
+        <input
+          type="text"
+          placeholder="Search..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="border rounded px-3 py-1.5 text-sm w-60"
+        />
+        <select
+          value={sortKey}
+          onChange={(e) => setSortKey(e.target.value as SortKey)}
+          className="border rounded px-2 py-1.5 text-sm"
+        >
+          <option value="updated_at">Last Updated</option>
+          <option value="created_at">Date Created</option>
+          <option value="title">Title</option>
+        </select>
+        <div className="flex items-center gap-1.5 ml-auto">
+          <label className="text-xs text-gray-500">Columns</label>
+          <input
+            type="range"
+            min={2}
+            max={8}
+            value={columns}
+            onChange={(e) => setColumns(Number(e.target.value))}
+            className="w-24"
+          />
+          <span className="text-xs text-gray-500 w-4 text-center">{columns}</span>
+        </div>
+      </div>
 
       {loading ? (
         <p className="text-gray-400 text-center py-8">Loading...</p>
       ) : (
         <>
-          {childFolders.length > 0 && (
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-4">
-              {childFolders.map((folder) => (
+          {filteredFolders.length > 0 && (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2 mb-4">
+              {filteredFolders.map((folder) => (
                 <FolderCard
                   key={folder.id}
                   folder={folder}
@@ -148,8 +215,9 @@ export function DashboardPage() {
           )}
 
           <WorksList
-            works={works}
+            works={filteredAndSortedWorks}
             loading={false}
+            columns={columns}
             onContextMenu={handleWorkContextMenu}
           />
         </>
