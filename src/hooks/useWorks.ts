@@ -34,7 +34,7 @@ export function useWorks() {
     [user],
   );
 
-  const fetchWork = async (id: string): Promise<Work | null> => {
+  const fetchWork = useCallback(async (id: string): Promise<Work | null> => {
     const { data, error } = await supabase
       .from('works')
       .select('*')
@@ -43,7 +43,7 @@ export function useWorks() {
 
     if (error) return null;
     return data;
-  };
+  }, []);
 
   const createWork = async (folderId?: string | null): Promise<Work | null> => {
     if (!user) return null;
