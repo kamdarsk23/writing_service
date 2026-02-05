@@ -1,8 +1,6 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useRef, useCallback, useReducer } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useWorks } from '../hooks/useWorks';
-import { EditorToolbar } from '../components/editor/EditorToolbar';
-import { TitleInput } from '../components/editor/TitleInput';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 
@@ -10,11 +8,11 @@ export function EditorPage() {
   const { workId } = useParams();
   const navigate = useNavigate();
   const { fetchWork, updateWork } = useWorks();
-  const [title, setTitle] = useState('');
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
+  const titleRef = useRef('');
   const contentRef = useRef<Record<string, unknown>>({});
   const loadedContentRef = useRef<Record<string, unknown>>({});
+  const loadingRef = useRef(true);
+  const [, forceRender] = useReducer((x: number) => x + 1, 0);
 
   const editor = useEditor({
     extensions: [StarterKit],
@@ -24,64 +22,73 @@ export function EditorPage() {
     },
   });
 
-  // Effect 1: Fetch work data (only depends on workId and fetchWork)
   useEffect(() => {
     if (!workId) return;
-    setLoading(true);
+    loadingRef.current = true;
+    forceRender();
     fetchWork(workId).then((work) => {
       if (work) {
-        setTitle(work.title);
+        titleRef.current = work.title;
         contentRef.current = work.content;
         loadedContentRef.current = work.content;
       } else {
         navigate('/');
       }
-      setLoading(false);
+      loadingRef.current = false;
+      forceRender();
     });
   }, [workId, fetchWork, navigate]);
 
-  // Effect 2: Sync loaded content into editor once editor is ready
   useEffect(() => {
-    if (editor && !loading && Object.keys(loadedContentRef.current).length > 0) {
+    if (editor && !loadingRef.current && Object.keys(loadedContentRef.current).length > 0) {
       editor.commands.setContent(loadedContentRef.current);
     }
-  }, [editor, loading]);
+  }, [editor, loadingRef.current]);
 
-  const handleSave = async () => {
+  const handleSave = useCallback(async () => {
     if (!workId) return;
-    setSaving(true);
-    await updateWork(workId, { title, content: contentRef.current });
-    setSaving(false);
+    await updateWork(workId, { title: titleRef.current, content: contentRef.current });
     navigate('/');
+  }, [workId, updateWork, navigate]);
+
+  const handleBack = useCallback(() => {
+    navigate(-1);
+  }, [navigate]);
+
+  // Cmd+D to save, Cmd+E to go back
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.metaKey && e.key === 'd') {
+        e.preventDefault();
+        handleSave();
+      }
+      if (e.metaKey && e.key === 'e') {
+        e.preventDefault();
+        handleBack();
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [handleSave, handleBack]);
+
+  // Click anywhere on the surface focuses the editor
+  const handleSurfaceClick = () => {
+    if (editor && !editor.isFocused) {
+      editor.commands.focus('end');
+    }
   };
 
-  if (loading) {
+  if (loadingRef.current) {
     return (
-      <div className="p-6">
-        <p className="text-gray-400">Loading...</p>
+      <div className="h-screen flex items-center justify-center editor-surface">
+        <p className="text-gray-500">Loading...</p>
       </div>
     );
   }
 
   return (
-    <div className="p-6 max-w-4xl flex flex-col gap-3 h-full">
-      <div className="flex items-center gap-3">
-        <button onClick={() => navigate(-1)} className="text-sm text-blue-600 hover:underline">
-          Back
-        </button>
-        <button
-          onClick={handleSave}
-          disabled={saving}
-          className="bg-blue-600 text-white px-4 py-1.5 rounded text-sm disabled:opacity-50"
-        >
-          {saving ? 'Saving...' : 'Save'}
-        </button>
-      </div>
-      <TitleInput value={title} onChange={setTitle} />
-      <EditorToolbar editor={editor} />
-      <div className="prose max-w-none flex-1">
-        <EditorContent editor={editor} className="min-h-[300px]" />
-      </div>
+    <div className="h-screen editor-surface" onClick={handleSurfaceClick}>
+      <EditorContent editor={editor} className="h-screen" />
     </div>
   );
 }

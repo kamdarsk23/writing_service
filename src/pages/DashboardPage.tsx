@@ -9,6 +9,7 @@ import { ContextMenu } from '../components/dashboard/ContextMenu';
 import { MoveToModal } from '../components/dashboard/MoveToModal';
 import { WorksList } from '../components/works/WorksList';
 import { RenameFolderDialog } from '../components/folders/RenameFolderDialog';
+import { RenameWorkDialog } from '../components/works/RenameWorkDialog';
 
 export function DashboardPage() {
   const { folderId } = useParams();
@@ -22,7 +23,7 @@ export function DashboardPage() {
     deleteFolder,
     moveFolder,
   } = useFolders();
-  const { works, loading: worksLoading, fetchWorks, deleteWork, moveWork } = useWorks();
+  const { works, loading: worksLoading, fetchWorks, deleteWork, moveWork, renameWork } = useWorks();
   const { menu, show: showMenu, hide: hideMenu } = useContextMenu();
 
   const [moveModalTarget, setMoveModalTarget] = useState<{
@@ -30,9 +31,13 @@ export function DashboardPage() {
     type: 'folder' | 'work';
     name: string;
   } | null>(null);
-  const [renameTarget, setRenameTarget] = useState<{
+  const [renameFolderTarget, setRenameFolderTarget] = useState<{
     id: string;
     name: string;
+  } | null>(null);
+  const [renameWorkTarget, setRenameWorkTarget] = useState<{
+    id: string;
+    title: string;
   } | null>(null);
 
   const refetch = useCallback(() => {
@@ -91,31 +96,34 @@ export function DashboardPage() {
   };
 
   const handleRename = () => {
-    if (!menu.targetId) return;
-    const folder = folders.find((f) => f.id === menu.targetId);
-    if (folder) {
-      setRenameTarget({ id: folder.id, name: folder.name });
+    if (!menu.targetId || !menu.targetType) return;
+    if (menu.targetType === 'folder') {
+      const folder = folders.find((f) => f.id === menu.targetId);
+      if (folder) setRenameFolderTarget({ id: folder.id, name: folder.name });
+    } else {
+      const work = works.find((w) => w.id === menu.targetId);
+      if (work) setRenameWorkTarget({ id: work.id, title: work.title });
     }
   };
 
-  const handleRenameConfirm = async (newName: string) => {
-    if (!renameTarget) return;
-    await renameFolder(renameTarget.id, newName);
-    setRenameTarget(null);
+  const handleRenameFolderConfirm = async (newName: string) => {
+    if (!renameFolderTarget) return;
+    await renameFolder(renameFolderTarget.id, newName);
+    setRenameFolderTarget(null);
     refetch();
   };
 
-  const contextMenuItems =
-    menu.targetType === 'folder'
-      ? [
-          { label: 'Move to...', onClick: handleMoveTo },
-          { label: 'Rename', onClick: handleRename },
-          { label: 'Delete', onClick: handleDelete, danger: true },
-        ]
-      : [
-          { label: 'Move to...', onClick: handleMoveTo },
-          { label: 'Delete', onClick: handleDelete, danger: true },
-        ];
+  const handleRenameWorkConfirm = async (newTitle: string) => {
+    if (!renameWorkTarget) return;
+    await renameWork(renameWorkTarget.id, newTitle);
+    setRenameWorkTarget(null);
+  };
+
+  const contextMenuItems = [
+    { label: 'Move to...', onClick: handleMoveTo },
+    { label: 'Rename', onClick: handleRename },
+    { label: 'Delete', onClick: handleDelete, danger: true },
+  ];
 
   const loading = foldersLoading || worksLoading;
 
@@ -166,11 +174,19 @@ export function DashboardPage() {
         />
       )}
 
-      {renameTarget && (
+      {renameFolderTarget && (
         <RenameFolderDialog
-          currentName={renameTarget.name}
-          onConfirm={handleRenameConfirm}
-          onCancel={() => setRenameTarget(null)}
+          currentName={renameFolderTarget.name}
+          onConfirm={handleRenameFolderConfirm}
+          onCancel={() => setRenameFolderTarget(null)}
+        />
+      )}
+
+      {renameWorkTarget && (
+        <RenameWorkDialog
+          currentTitle={renameWorkTarget.title}
+          onConfirm={handleRenameWorkConfirm}
+          onCancel={() => setRenameWorkTarget(null)}
         />
       )}
     </div>

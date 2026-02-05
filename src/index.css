@@ -4,3 +4,20 @@
 .tiptap:focus {
   outline: none;
 }
+
+.editor-surface {
+  background-color: #e6e1e4;
+  font-family: 'Roboto Mono', monospace;
+}
+
+.editor-surface .tiptap {
+  font-family: 'Roboto Mono', monospace;
+  font-size: 1.8rem;
+  min-height: 100%;
+  padding: 5rem 12rem 0 12rem;
+  cursor: text;
+}
+
+.editor-surface .tiptap p.is-editor-empty:first-child::before {
+  content: '';
+}

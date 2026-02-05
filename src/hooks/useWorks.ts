@@ -45,14 +45,14 @@ export function useWorks() {
     return data;
   }, []);
 
-  const createWork = async (folderId?: string | null): Promise<Work | null> => {
+  const createWork = async (title: string, folderId?: string | null): Promise<Work | null> => {
     if (!user) return null;
     const { data, error } = await supabase
       .from('works')
       .insert({
         user_id: user.id,
         folder_id: folderId ?? null,
-        title: 'Untitled',
+        title,
         content: {},
       })
       .select()
@@ -60,6 +60,14 @@ export function useWorks() {
 
     if (error) return null;
     return data;
+  };
+
+  const renameWork = async (id: string, title: string) => {
+    const { error } = await supabase.from('works').update({ title }).eq('id', id);
+    if (!error) {
+      setWorks((prev) => prev.map((w) => (w.id === id ? { ...w, title } : w)));
+    }
+    return { error };
   };
 
   const updateWork = async (
@@ -89,5 +97,5 @@ export function useWorks() {
     return { error };
   };
 
-  return { works, loading, fetchWorks, fetchWork, createWork, updateWork, deleteWork, moveWork };
+  return { works, loading, fetchWorks, fetchWork, createWork, updateWork, deleteWork, moveWork, renameWork };
 }
