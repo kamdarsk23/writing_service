@@ -78,5 +78,16 @@ export function useWorks() {
     return { error };
   };
 
-  return { works, loading, fetchWorks, fetchWork, createWork, updateWork, deleteWork };
+  const moveWork = async (workId: string, newFolderId: string | null) => {
+    const { error } = await supabase
+      .from('works')
+      .update({ folder_id: newFolderId })
+      .eq('id', workId);
+    if (!error) {
+      setWorks((prev) => prev.filter((w) => w.id !== workId));
+    }
+    return { error };
+  };
+
+  return { works, loading, fetchWorks, fetchWork, createWork, updateWork, deleteWork, moveWork };
 }
