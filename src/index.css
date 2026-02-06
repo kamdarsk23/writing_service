@@ -17,9 +17,9 @@ body {
 
 .editor-surface .tiptap {
   font-family: 'Roboto Mono', monospace;
-  font-size: 1.8rem;
+  font-size: var(--editor-font-size, 1.2rem);
   min-height: 100%;
-  padding: 3rem 12rem 4rem 12rem;
+  padding: 3rem 7rem 4rem 8rem;
   cursor: text;
 }
 

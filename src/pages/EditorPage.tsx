@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback, useReducer } from 'react';
+import { useEffect, useRef, useCallback, useReducer, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useWorks } from '../hooks/useWorks';
 import { useEditor, EditorContent } from '@tiptap/react';
@@ -55,7 +55,9 @@ export function EditorPage() {
     navigate(-1);
   }, [navigate]);
 
-  // Cmd+D to save, Cmd+E to go back
+  const [fontSize, setFontSize] = useState(1.2);
+
+  // Keyboard shortcuts
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.metaKey && e.key === 'd') {
@@ -65,6 +67,14 @@ export function EditorPage() {
       if (e.metaKey && e.key === 'e') {
         e.preventDefault();
         handleBack();
+      }
+      if (e.metaKey && e.key === '/') {
+        e.preventDefault();
+        setFontSize((prev) => Math.round((prev + 0.1) * 10) / 10);
+      }
+      if (e.metaKey && e.key === '.') {
+        e.preventDefault();
+        setFontSize((prev) => Math.round((Math.max(0.1, prev - 0.1)) * 10) / 10);
       }
     };
     window.addEventListener('keydown', handler);
@@ -87,7 +97,7 @@ export function EditorPage() {
   }
 
   return (
-    <div className="h-screen editor-surface" onClick={handleSurfaceClick}>
+    <div className="h-screen editor-surface" onClick={handleSurfaceClick} style={{ '--editor-font-size': `${fontSize}rem` } as React.CSSProperties}>
       <EditorContent editor={editor} className="h-screen" />
     </div>
   );
