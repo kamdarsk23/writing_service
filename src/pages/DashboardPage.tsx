@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { useFolders } from '../hooks/useFolders';
 import { useWorks } from '../hooks/useWorks';
 import { useContextMenu } from '../hooks/useContextMenu';
@@ -10,6 +10,9 @@ import { MoveToModal } from '../components/dashboard/MoveToModal';
 import { WorksList } from '../components/works/WorksList';
 import { RenameFolderDialog } from '../components/folders/RenameFolderDialog';
 import { RenameWorkDialog } from '../components/works/RenameWorkDialog';
+import { CreateFolderDialog } from '../components/folders/CreateFolderDialog';
+import { CreateWorkDialog } from '../components/works/CreateWorkDialog';
+import { NewButtonDropdown } from '../components/layout/NewButtonDropdown';
 import type { Work } from '../types';
 
 type SortKey = 'updated_at' | 'created_at' | 'title';
@@ -25,17 +28,19 @@ function sortWorks(works: Work[], key: SortKey): Work[] {
 
 export function DashboardPage() {
   const { folderId } = useParams();
+  const navigate = useNavigate();
   const {
     folders,
     tree,
     loading: foldersLoading,
     fetchFolders,
     getChildFolders,
+    createFolder,
     renameFolder,
     deleteFolder,
     moveFolder,
   } = useFolders();
-  const { works, loading: worksLoading, fetchWorks, deleteWork, moveWork, renameWork } = useWorks();
+  const { works, loading: worksLoading, fetchWorks, createWork, deleteWork, moveWork, renameWork } = useWorks();
   const { menu, show: showMenu, hide: hideMenu } = useContextMenu();
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -55,6 +60,8 @@ export function DashboardPage() {
     id: string;
     title: string;
   } | null>(null);
+  const [showCreateFolder, setShowCreateFolder] = useState(false);
+  const [showCreateWork, setShowCreateWork] = useState(false);
 
   const refetch = useCallback(() => {
     fetchFolders();
@@ -154,6 +161,20 @@ export function DashboardPage() {
     setRenameWorkTarget(null);
   };
 
+  const handleCreateWork = async (title: string) => {
+    const work = await createWork(title, folderId ?? null);
+    setShowCreateWork(false);
+    if (work) {
+      navigate(`/work/${work.id}`);
+    }
+  };
+
+  const handleCreateFolder = async (name: string) => {
+    await createFolder(name, folderId ?? null);
+    setShowCreateFolder(false);
+    refetch();
+  };
+
   const contextMenuItems = [
     { label: 'Move to...', onClick: handleMoveTo },
     { label: 'Rename', onClick: handleRename },
@@ -178,23 +199,29 @@ export function DashboardPage() {
         <select
           value={sortKey}
           onChange={(e) => setSortKey(e.target.value as SortKey)}
-          className="border rounded px-2 py-1.5 text-sm"
+          className="border rounded px-2 py-1.5 text-sm cursor-pointer"
         >
           <option value="updated_at">Last Updated</option>
           <option value="created_at">Date Created</option>
           <option value="title">Title</option>
         </select>
-        <div className="flex items-center gap-1.5 ml-auto">
-          <label className="text-xs text-gray-500">Columns</label>
-          <input
-            type="range"
-            min={2}
-            max={8}
-            value={columns}
-            onChange={(e) => setColumns(Number(e.target.value))}
-            className="w-24"
+        <div className="flex items-center gap-3 ml-auto">
+          <NewButtonDropdown
+            onNewWork={() => setShowCreateWork(true)}
+            onNewFolder={() => setShowCreateFolder(true)}
           />
-          <span className="text-xs text-gray-500 w-4 text-center">{columns}</span>
+          <div className="flex items-center gap-1.5">
+            <label className="text-xs text-gray-500">Columns</label>
+            <input
+              type="range"
+              min={2}
+              max={8}
+              value={columns}
+              onChange={(e) => setColumns(Number(e.target.value))}
+              className="w-24"
+            />
+            <span className="text-xs text-gray-500 w-4 text-center">{columns}</span>
+          </div>
         </div>
       </div>
 
@@ -255,6 +282,20 @@ export function DashboardPage() {
           currentTitle={renameWorkTarget.title}
           onConfirm={handleRenameWorkConfirm}
           onCancel={() => setRenameWorkTarget(null)}
+        />
+      )}
+
+      {showCreateFolder && (
+        <CreateFolderDialog
+          onConfirm={handleCreateFolder}
+          onCancel={() => setShowCreateFolder(false)}
+        />
+      )}
+
+      {showCreateWork && (
+        <CreateWorkDialog
+          onConfirm={handleCreateWork}
+          onCancel={() => setShowCreateWork(false)}
         />
       )}
     </div>
