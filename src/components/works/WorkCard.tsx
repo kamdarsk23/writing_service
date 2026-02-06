@@ -19,10 +19,11 @@ export function WorkCard({ work, onContextMenu }: WorkCardProps) {
     <div
       onClick={() => navigate(`/work/${work.id}`)}
       onContextMenu={onContextMenu}
-      className="border rounded-lg p-4 cursor-pointer hover:shadow-md transition-shadow bg-white flex flex-col justify-between min-h-[120px]"
+      className="border rounded-lg p-4 cursor-pointer hover:shadow-md hover:scale-105 transition-all flex flex-col justify-between min-h-[120px]"
+      style={{ backgroundColor: '#9e8f98' }}
     >
-      <h3 className="font-medium text-sm truncate">{work.title}</h3>
-      <p className="text-xs text-gray-400 mt-2">Updated {formattedDate}</p>
+      <h3 className="font-medium text-sm truncate text-white">{work.title}</h3>
+      <p className="text-xs text-gray-200 mt-2">Updated {formattedDate}</p>
     </div>
   );
 }

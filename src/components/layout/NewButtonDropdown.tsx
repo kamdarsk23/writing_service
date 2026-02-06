@@ -24,7 +24,8 @@ export function NewButtonDropdown({ onNewWork, onNewFolder }: NewButtonDropdownP
     <div ref={ref} className="relative">
       <button
         onClick={() => setOpen(!open)}
-        className="bg-blue-600 text-white rounded px-3 py-1 text-sm"
+        className="text-white rounded px-3 cursor-pointer py-1 text-sm hover:bg-[#b09ca8]"
+        style={{ backgroundColor: '#9e8f98' }}
       >
         + New
       </button>
@@ -35,7 +36,7 @@ export function NewButtonDropdown({ onNewWork, onNewFolder }: NewButtonDropdownP
               onNewFolder();
               setOpen(false);
             }}
-            className="w-full text-left px-3 py-1.5 text-sm hover:bg-gray-100"
+            className="w-full text-left px-3 py-1.5 text-sm cursor-pointer hover:bg-gray-100"
           >
             New Folder
           </button>
@@ -44,7 +45,7 @@ export function NewButtonDropdown({ onNewWork, onNewFolder }: NewButtonDropdownP
               onNewWork();
               setOpen(false);
             }}
-            className="w-full text-left px-3 py-1.5 text-sm hover:bg-gray-100"
+            className="w-full text-left px-3 py-1.5 text-sm cursor-pointer hover:bg-gray-100"
           >
             New Work
           </button>

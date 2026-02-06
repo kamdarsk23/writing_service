@@ -1,6 +1,10 @@
 @import "tailwindcss";
 @plugin "@tailwindcss/typography";
 
+body {
+  background-color: #e6e1e4;
+}
+
 .tiptap:focus {
   outline: none;
 }
@@ -8,13 +12,14 @@
 .editor-surface {
   background-color: #e6e1e4;
   font-family: 'Roboto Mono', monospace;
+  overflow-y: auto;
 }
 
 .editor-surface .tiptap {
   font-family: 'Roboto Mono', monospace;
   font-size: 1.8rem;
   min-height: 100%;
-  padding: 5rem 12rem 0 12rem;
+  padding: 3rem 12rem 4rem 12rem;
   cursor: text;
 }
 
