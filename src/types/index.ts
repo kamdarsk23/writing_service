@@ -1,1 +1,1 @@
-export type { Folder, Work, FolderNode } from './database';
+export type { Folder, Work, FolderNode, QTreeRoot, QTreeNode, QTreeNodeTree } from './database';
