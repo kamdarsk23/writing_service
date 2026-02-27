@@ -2,27 +2,39 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useFolders } from '../hooks/useFolders';
 import { useWorks } from '../hooks/useWorks';
+import { useQTrees } from '../hooks/useQTrees';
 import { useContextMenu } from '../hooks/useContextMenu';
 import { Breadcrumbs } from '../components/dashboard/Breadcrumbs';
 import { FolderCard } from '../components/dashboard/FolderCard';
 import { ContextMenu } from '../components/dashboard/ContextMenu';
 import { MoveToModal } from '../components/dashboard/MoveToModal';
-import { WorksList } from '../components/works/WorksList';
+import { WorkCard } from '../components/works/WorkCard';
+import { QTreeCard } from '../components/qtree/QTreeCard';
 import { RenameFolderDialog } from '../components/folders/RenameFolderDialog';
 import { RenameWorkDialog } from '../components/works/RenameWorkDialog';
+import { RenameQTreeDialog } from '../components/qtree/RenameQTreeDialog';
 import { CreateFolderDialog } from '../components/folders/CreateFolderDialog';
 import { CreateWorkDialog } from '../components/works/CreateWorkDialog';
+import { CreateQTreeDialog } from '../components/qtree/CreateQTreeDialog';
 import { NewButtonDropdown } from '../components/layout/NewButtonDropdown';
-import type { Work } from '../types';
+import type { Work, QTreeRoot } from '../types';
 
 type SortKey = 'updated_at' | 'created_at' | 'title';
 
-function sortWorks(works: Work[], key: SortKey): Work[] {
-  return [...works].sort((a, b) => {
+type CombinedItem =
+  | { kind: 'work'; item: Work }
+  | { kind: 'qtree'; item: QTreeRoot };
+
+function sortCombined(items: CombinedItem[], key: SortKey): CombinedItem[] {
+  return [...items].sort((a, b) => {
     if (key === 'title') {
-      return a.title.localeCompare(b.title);
+      const nameA = a.kind === 'work' ? a.item.title : a.item.question;
+      const nameB = b.kind === 'work' ? b.item.title : b.item.question;
+      return nameA.localeCompare(nameB);
     }
-    return new Date(b[key]).getTime() - new Date(a[key]).getTime();
+    const dateA = new Date(a.item[key]).getTime();
+    const dateB = new Date(b.item[key]).getTime();
+    return dateB - dateA;
   });
 }
 
@@ -41,6 +53,15 @@ export function DashboardPage() {
     moveFolder,
   } = useFolders();
   const { works, loading: worksLoading, fetchWorks, createWork, deleteWork, moveWork, renameWork } = useWorks();
+  const {
+    qtrees,
+    loading: qtreesLoading,
+    fetchQTrees,
+    createQTreeRoot,
+    deleteQTreeRoot,
+    moveQTree,
+    renameQTreeRoot,
+  } = useQTrees();
   const { menu, show: showMenu, hide: hideMenu } = useContextMenu();
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -49,7 +70,7 @@ export function DashboardPage() {
 
   const [moveModalTarget, setMoveModalTarget] = useState<{
     id: string;
-    type: 'folder' | 'work';
+    type: 'folder' | 'work' | 'qtree';
     name: string;
   } | null>(null);
   const [renameFolderTarget, setRenameFolderTarget] = useState<{
@@ -60,13 +81,19 @@ export function DashboardPage() {
     id: string;
     title: string;
   } | null>(null);
+  const [renameQTreeTarget, setRenameQTreeTarget] = useState<{
+    id: string;
+    question: string;
+  } | null>(null);
   const [showCreateFolder, setShowCreateFolder] = useState(false);
   const [showCreateWork, setShowCreateWork] = useState(false);
+  const [showCreateQTree, setShowCreateQTree] = useState(false);
 
   const refetch = useCallback(() => {
     fetchFolders();
     fetchWorks(folderId ?? null);
-  }, [fetchFolders, fetchWorks, folderId]);
+    fetchQTrees(folderId ?? null);
+  }, [fetchFolders, fetchWorks, fetchQTrees, folderId]);
 
   useEffect(() => {
     refetch();
@@ -91,13 +118,17 @@ export function DashboardPage() {
     [childFolders, query],
   );
 
-  const filteredAndSortedWorks = useMemo(
-    () => {
-      const filtered = query ? works.filter((w) => w.title.toLowerCase().includes(query)) : works;
-      return sortWorks(filtered, sortKey);
-    },
-    [works, query, sortKey],
-  );
+  const combinedItems = useMemo((): CombinedItem[] => {
+    const workItems: CombinedItem[] = (
+      query ? works.filter((w) => w.title.toLowerCase().includes(query)) : works
+    ).map((w) => ({ kind: 'work', item: w }));
+
+    const qtreeItems: CombinedItem[] = (
+      query ? qtrees.filter((q) => q.question.toLowerCase().includes(query)) : qtrees
+    ).map((q) => ({ kind: 'qtree', item: q }));
+
+    return sortCombined([...workItems, ...qtreeItems], sortKey);
+  }, [works, qtrees, query, sortKey]);
 
   const handleFolderContextMenu = (e: React.MouseEvent, id: string) => {
     showMenu(e, id, 'folder');
@@ -107,22 +138,32 @@ export function DashboardPage() {
     showMenu(e, workId, 'work');
   };
 
+  const handleQTreeContextMenu = (e: React.MouseEvent, qtreeId: string) => {
+    showMenu(e, qtreeId, 'qtree');
+  };
+
   const handleDelete = async () => {
     if (!menu.targetId || !menu.targetType) return;
     if (menu.targetType === 'folder') {
       await deleteFolder(menu.targetId);
-    } else {
+    } else if (menu.targetType === 'work') {
       await deleteWork(menu.targetId);
+    } else {
+      await deleteQTreeRoot(menu.targetId);
     }
     refetch();
   };
 
   const handleMoveTo = () => {
     if (!menu.targetId || !menu.targetType) return;
-    const name =
-      menu.targetType === 'folder'
-        ? folders.find((f) => f.id === menu.targetId)?.name ?? 'item'
-        : works.find((w) => w.id === menu.targetId)?.title ?? 'item';
+    let name = 'item';
+    if (menu.targetType === 'folder') {
+      name = folders.find((f) => f.id === menu.targetId)?.name ?? 'item';
+    } else if (menu.targetType === 'work') {
+      name = works.find((w) => w.id === menu.targetId)?.title ?? 'item';
+    } else {
+      name = qtrees.find((q) => q.id === menu.targetId)?.question ?? 'item';
+    }
     setMoveModalTarget({ id: menu.targetId, type: menu.targetType, name });
   };
 
@@ -130,8 +171,10 @@ export function DashboardPage() {
     if (!moveModalTarget) return;
     if (moveModalTarget.type === 'folder') {
       await moveFolder(moveModalTarget.id, destinationId);
-    } else {
+    } else if (moveModalTarget.type === 'work') {
       await moveWork(moveModalTarget.id, destinationId);
+    } else {
+      await moveQTree(moveModalTarget.id, destinationId);
     }
     setMoveModalTarget(null);
     refetch();
@@ -142,9 +185,12 @@ export function DashboardPage() {
     if (menu.targetType === 'folder') {
       const folder = folders.find((f) => f.id === menu.targetId);
       if (folder) setRenameFolderTarget({ id: folder.id, name: folder.name });
-    } else {
+    } else if (menu.targetType === 'work') {
       const work = works.find((w) => w.id === menu.targetId);
       if (work) setRenameWorkTarget({ id: work.id, title: work.title });
+    } else {
+      const qtree = qtrees.find((q) => q.id === menu.targetId);
+      if (qtree) setRenameQTreeTarget({ id: qtree.id, question: qtree.question });
     }
   };
 
@@ -161,6 +207,12 @@ export function DashboardPage() {
     setRenameWorkTarget(null);
   };
 
+  const handleRenameQTreeConfirm = async (newQuestion: string) => {
+    if (!renameQTreeTarget) return;
+    await renameQTreeRoot(renameQTreeTarget.id, newQuestion);
+    setRenameQTreeTarget(null);
+  };
+
   const handleCreateWork = async (title: string) => {
     const work = await createWork(title, folderId ?? null);
     setShowCreateWork(false);
@@ -175,13 +227,21 @@ export function DashboardPage() {
     refetch();
   };
 
+  const handleCreateQTree = async (question: string) => {
+    const root = await createQTreeRoot(question, folderId ?? null);
+    setShowCreateQTree(false);
+    if (root) {
+      navigate(`/qtree/${root.id}`);
+    }
+  };
+
   const contextMenuItems = [
     { label: 'Move to...', onClick: handleMoveTo },
     { label: 'Rename', onClick: handleRename },
     { label: 'Delete', onClick: handleDelete, danger: true },
   ];
 
-  const loading = foldersLoading || worksLoading;
+  const loading = foldersLoading || worksLoading || qtreesLoading;
 
   return (
     <div className="p-6">
@@ -209,6 +269,7 @@ export function DashboardPage() {
           <NewButtonDropdown
             onNewWork={() => setShowCreateWork(true)}
             onNewFolder={() => setShowCreateFolder(true)}
+            onNewQTree={() => setShowCreateQTree(true)}
           />
           <div className="flex items-center gap-1.5">
             <label className="text-xs text-gray-500">Columns</label>
@@ -241,12 +302,30 @@ export function DashboardPage() {
             </div>
           )}
 
-          <WorksList
-            works={filteredAndSortedWorks}
-            loading={false}
-            columns={columns}
-            onContextMenu={handleWorkContextMenu}
-          />
+          {combinedItems.length === 0 ? (
+            <p className="text-gray-400 text-center py-8">Nothing here yet.</p>
+          ) : (
+            <div
+              className="grid gap-3"
+              style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}
+            >
+              {combinedItems.map((entry) =>
+                entry.kind === 'work' ? (
+                  <WorkCard
+                    key={entry.item.id}
+                    work={entry.item}
+                    onContextMenu={(e) => handleWorkContextMenu(e, entry.item.id)}
+                  />
+                ) : (
+                  <QTreeCard
+                    key={entry.item.id}
+                    qtree={entry.item}
+                    onContextMenu={(e) => handleQTreeContextMenu(e, entry.item.id)}
+                  />
+                ),
+              )}
+            </div>
+          )}
         </>
       )}
 
@@ -285,6 +364,14 @@ export function DashboardPage() {
         />
       )}
 
+      {renameQTreeTarget && (
+        <RenameQTreeDialog
+          currentQuestion={renameQTreeTarget.question}
+          onConfirm={handleRenameQTreeConfirm}
+          onCancel={() => setRenameQTreeTarget(null)}
+        />
+      )}
+
       {showCreateFolder && (
         <CreateFolderDialog
           onConfirm={handleCreateFolder}
@@ -296,6 +383,13 @@ export function DashboardPage() {
         <CreateWorkDialog
           onConfirm={handleCreateWork}
           onCancel={() => setShowCreateWork(false)}
+        />
+      )}
+
+      {showCreateQTree && (
+        <CreateQTreeDialog
+          onConfirm={handleCreateQTree}
+          onCancel={() => setShowCreateQTree(false)}
         />
       )}
     </div>

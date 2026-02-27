@@ -5,7 +5,7 @@ export interface ContextMenuState {
   x: number;
   y: number;
   targetId: string | null;
-  targetType: 'folder' | 'work' | null;
+  targetType: 'folder' | 'work' | 'qtree' | null;
 }
 
 const initialState: ContextMenuState = {
@@ -20,7 +20,7 @@ export function useContextMenu() {
   const [menu, setMenu] = useState<ContextMenuState>(initialState);
 
   const show = useCallback(
-    (e: React.MouseEvent, targetId: string, targetType: 'folder' | 'work') => {
+    (e: React.MouseEvent, targetId: string, targetType: 'folder' | 'work' | 'qtree') => {
       e.preventDefault();
       e.stopPropagation();
       setMenu({ visible: true, x: e.clientX, y: e.clientY, targetId, targetType });

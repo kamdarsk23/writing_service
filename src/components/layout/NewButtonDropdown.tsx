@@ -3,9 +3,10 @@ import { useEffect, useRef, useState } from 'react';
 interface NewButtonDropdownProps {
   onNewWork: () => void;
   onNewFolder: () => void;
+  onNewQTree: () => void;
 }
 
-export function NewButtonDropdown({ onNewWork, onNewFolder }: NewButtonDropdownProps) {
+export function NewButtonDropdown({ onNewWork, onNewFolder, onNewQTree }: NewButtonDropdownProps) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -48,6 +49,15 @@ export function NewButtonDropdown({ onNewWork, onNewFolder }: NewButtonDropdownP
             className="w-full text-left px-3 py-1.5 text-sm cursor-pointer hover:bg-gray-100"
           >
             New Work
+          </button>
+          <button
+            onClick={() => {
+              onNewQTree();
+              setOpen(false);
+            }}
+            className="w-full text-left px-3 py-1.5 text-sm cursor-pointer hover:bg-gray-100"
+          >
+            New Q Tree
           </button>
         </div>
       )}

@@ -2,6 +2,8 @@ import { createHashRouter, Outlet } from 'react-router-dom';
 import { AuthPage } from './pages/AuthPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { EditorPage } from './pages/EditorPage';
+import { QTreePage } from './pages/QTreePage';
+import { QTreeEditorPage } from './pages/QTreeEditorPage';
 import { ProtectedRoute } from './components/auth/ProtectedRoute';
 import { AppLayout } from './components/layout/AppLayout';
 import { AuthProvider } from './contexts/AuthContext';
@@ -46,6 +48,22 @@ export const router = createHashRouter([
         element: (
           <ProtectedRoute>
             <EditorPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'qtree/:rootId',
+        element: (
+          <ProtectedRoute>
+            <QTreePage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'qtree/:rootId/node/:nodeId',
+        element: (
+          <ProtectedRoute>
+            <QTreeEditorPage />
           </ProtectedRoute>
         ),
       },
