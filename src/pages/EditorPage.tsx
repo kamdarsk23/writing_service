@@ -11,6 +11,7 @@ export function EditorPage() {
   const titleRef = useRef('');
   const contentRef = useRef<Record<string, unknown>>({});
   const loadedContentRef = useRef<Record<string, unknown>>({});
+  const folderIdRef = useRef<string | null>(null);
   const loadingRef = useRef(true);
   const [, forceRender] = useReducer((x: number) => x + 1, 0);
 
@@ -31,6 +32,7 @@ export function EditorPage() {
         titleRef.current = work.title;
         contentRef.current = work.content;
         loadedContentRef.current = work.content;
+        folderIdRef.current = work.folder_id;
       } else {
         navigate('/');
       }
@@ -48,7 +50,7 @@ export function EditorPage() {
   const handleSave = useCallback(async () => {
     if (!workId) return;
     await updateWork(workId, { title: titleRef.current, content: contentRef.current });
-    navigate('/');
+    navigate(folderIdRef.current ? `/folder/${folderIdRef.current}` : '/');
   }, [workId, updateWork, navigate]);
 
   const handleBack = useCallback(() => {
