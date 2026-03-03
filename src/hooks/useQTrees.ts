@@ -153,7 +153,7 @@ export function useQTrees() {
     return { error };
   };
 
-  function buildNodeTree(nodes: QTreeNode[], rootId: string): QTreeNodeTree[] {
+  const buildNodeTree = useCallback(function(nodes: QTreeNode[], rootId: string): QTreeNodeTree[] {
     const nodeMap = new Map<string, QTreeNodeTree>();
     for (const node of nodes) {
       nodeMap.set(node.id, { ...node, children: [] });
@@ -171,7 +171,7 @@ export function useQTrees() {
       }
     }
     return roots;
-  }
+  }, []);
 
   return {
     qtrees,
