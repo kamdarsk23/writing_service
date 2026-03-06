@@ -7,6 +7,8 @@ import { ListInputRules } from '../extensions/listInputRules';
 import { IndentExtension } from '../extensions/IndentExtension';
 import { HeadingInputRules } from '../extensions/headingInputRules';
 
+const editorExtensions = [StarterKit, ListInputRules, IndentExtension, HeadingInputRules];
+
 export function QTreeEditorPage() {
   const { rootId, nodeId } = useParams<{ rootId: string; nodeId: string }>();
   const navigate = useNavigate();
@@ -23,7 +25,7 @@ export function QTreeEditorPage() {
   const [fontSize, setFontSize] = useState(1.2);
 
   const editor = useEditor({
-    extensions: [StarterKit, ListInputRules, IndentExtension, HeadingInputRules],
+    extensions: editorExtensions,
     content: {},
     onUpdate: ({ editor }) => {
       answerRef.current = editor.getJSON() as Record<string, unknown>;

@@ -1,4 +1,12 @@
-import { Extension } from '@tiptap/core'
+import { Extension, type Editor } from '@tiptap/core'
+
+const LIST_ITEM = 'listItem'
+const MAX_INDENT = 4
+
+function inListItem(editor: Editor): boolean {
+  const { $from } = editor.state.selection
+  return $from.depth >= 2 && $from.node($from.depth - 1).type.name === LIST_ITEM
+}
 
 declare module '@tiptap/core' {
   interface Commands<ReturnType> {
@@ -20,13 +28,11 @@ export const IndentExtension = Extension.create({
           indent: {
             default: 0,
             parseHTML: element => {
-              const ml = element.style.marginLeft
-              if (!ml) return 0
-              const parsed = parseFloat(ml)
+              const parsed = parseFloat(element.style.marginLeft)
               return isNaN(parsed) ? 0 : Math.round(parsed / 2)
             },
             renderHTML: attributes => {
-              if (!attributes.indent || attributes.indent === 0) return {}
+              if (!attributes.indent) return {}
               return { style: `margin-left: ${attributes.indent * 2}em` }
             },
           },
@@ -36,66 +42,37 @@ export const IndentExtension = Extension.create({
   },
 
   addCommands() {
+    const setIndent = (delta: 1 | -1) => ({ editor, commands }: { editor: Editor; commands: { updateAttributes: (type: string, attrs: Record<string, unknown>) => boolean } }) => {
+      const node = editor.state.selection.$from.node()
+      const indent = (node.attrs.indent ?? 0) + delta
+      return indent >= 0 && indent <= MAX_INDENT
+        ? commands.updateAttributes(node.type.name, { indent })
+        : false
+    }
     return {
-      increaseIndent: () => ({ editor, commands }) => {
-        const { $from } = editor.state.selection
-        const node = $from.node()
-        const currentIndent = node.attrs.indent ?? 0
-        if (currentIndent >= 4) return false
-        return commands.updateAttributes(node.type.name, { indent: currentIndent + 1 })
-      },
-      decreaseIndent: () => ({ editor, commands }) => {
-        const { $from } = editor.state.selection
-        const node = $from.node()
-        const currentIndent = node.attrs.indent ?? 0
-        if (currentIndent <= 0) return false
-        return commands.updateAttributes(node.type.name, { indent: currentIndent - 1 })
-      },
+      increaseIndent: () => setIndent(1),
+      decreaseIndent: () => setIndent(-1),
     }
   },
 
   addKeyboardShortcuts() {
     return {
-      Tab: ({ editor }) => {
-        const { $from } = editor.state.selection
-        const depth = $from.depth
+      Tab: ({ editor }) =>
+        inListItem(editor)
+          ? editor.commands.sinkListItem(LIST_ITEM)
+          : editor.commands.increaseIndent(),
 
-        // In a list item, sink it (nest one level deeper)
-        if (depth >= 2 && $from.node(depth - 1).type.name === 'listItem') {
-          return editor.commands.sinkListItem('listItem')
-        }
+      'Shift-Tab': ({ editor }) =>
+        inListItem(editor)
+          ? editor.commands.liftListItem(LIST_ITEM)
+          : editor.commands.decreaseIndent(),
 
-        return editor.commands.increaseIndent()
-      },
-      'Shift-Tab': ({ editor }) => {
-        const { $from } = editor.state.selection
-        const depth = $from.depth
-
-        // In a list item, lift it (reduce one nesting level)
-        if (depth >= 2 && $from.node(depth - 1).type.name === 'listItem') {
-          return editor.commands.liftListItem('listItem')
-        }
-
-        return editor.commands.decreaseIndent()
-      },
       Backspace: ({ editor }) => {
         const { $from, empty } = editor.state.selection
-        if (!empty) return false
-
-        if ($from.parentOffset !== 0) return false
-
-        // If inside a list item, lift it out to a paragraph instead of joining with previous item
-        const depth = $from.depth
-        if (depth >= 2 && $from.node(depth - 1).type.name === 'listItem') {
-          return editor.commands.liftListItem('listItem')
-        }
-
-        // If indented, remove one indent level
-        const currentIndent = $from.parent.attrs.indent ?? 0
-        if (currentIndent > 0) {
-          return editor.commands.decreaseIndent()
-        }
-        return false
+        if (!empty || $from.parentOffset !== 0) return false
+        if (inListItem(editor)) return editor.commands.liftListItem(LIST_ITEM)
+        const indent = $from.parent.attrs.indent ?? 0
+        return indent > 0 ? editor.commands.decreaseIndent() : false
       },
     }
   },

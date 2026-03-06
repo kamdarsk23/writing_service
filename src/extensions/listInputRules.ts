@@ -8,8 +8,8 @@ export const ListInputRules = Extension.create({
       wrappingInputRule({
         find: /^(\d+)\)\s$/,
         type: orderedListType,
-        getAttributes: match => ({ start: +match[1] }),
-        joinPredicate: (match, node) => node.childCount + node.attrs.start === +match[1],
+        getAttributes: match => ({ start: parseInt(match[1], 10) }),
+        joinPredicate: (match, node) => node.childCount + node.attrs.start === parseInt(match[1], 10),
       }),
     ]
   },
