@@ -58,18 +58,23 @@ export const IndentExtension = Extension.create({
     return {
       Tab: ({ editor }) => {
         const { $from } = editor.state.selection
-        const parentType = $from.parent.type.name
+        const depth = $from.depth
 
-        // In a list item, let StarterKit handle sinking
-        if (parentType === 'listItem') return false
+        // In a list item, sink it (nest one level deeper)
+        if (depth >= 2 && $from.node(depth - 1).type.name === 'listItem') {
+          return editor.commands.sinkListItem('listItem')
+        }
 
         return editor.commands.increaseIndent()
       },
       'Shift-Tab': ({ editor }) => {
         const { $from } = editor.state.selection
-        const parentType = $from.parent.type.name
+        const depth = $from.depth
 
-        if (parentType === 'listItem') return false
+        // In a list item, lift it (reduce one nesting level)
+        if (depth >= 2 && $from.node(depth - 1).type.name === 'listItem') {
+          return editor.commands.liftListItem('listItem')
+        }
 
         return editor.commands.decreaseIndent()
       },
