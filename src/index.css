@@ -49,15 +49,9 @@ body {
   margin-bottom: 0.5em;
 }
 
-/* Lists */
-.editor-surface .tiptap ul {
-  list-style-type: disc;
-  padding-left: 1.5em;
-  margin-bottom: 0.9em;
-}
-
+/* Lists — Google Docs nesting conventions */
+.editor-surface .tiptap ul,
 .editor-surface .tiptap ol {
-  list-style-type: decimal;
   padding-left: 1.5em;
   margin-bottom: 0.9em;
 }
@@ -65,3 +59,13 @@ body {
 .editor-surface .tiptap li {
   margin-bottom: 0.2em;
 }
+
+/* Ordered list levels: 1. → a. → i. */
+.editor-surface .tiptap ol { list-style-type: decimal; }
+.editor-surface .tiptap ol ol { list-style-type: lower-alpha; }
+.editor-surface .tiptap ol ol ol { list-style-type: lower-roman; }
+
+/* Unordered list levels: ● → ○ → ■ */
+.editor-surface .tiptap ul { list-style-type: disc; }
+.editor-surface .tiptap ul ul { list-style-type: circle; }
+.editor-surface .tiptap ul ul ul { list-style-type: square; }
