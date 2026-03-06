@@ -3,6 +3,11 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useQTrees } from '../hooks/useQTrees';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
+import { ListInputRules } from '../extensions/listInputRules';
+import { IndentExtension } from '../extensions/IndentExtension';
+import { HeadingInputRules } from '../extensions/headingInputRules';
+
+const editorExtensions = [StarterKit, ListInputRules, IndentExtension, HeadingInputRules];
 
 export function QTreeEditorPage() {
   const { rootId, nodeId } = useParams<{ rootId: string; nodeId: string }>();
@@ -20,7 +25,7 @@ export function QTreeEditorPage() {
   const [fontSize, setFontSize] = useState(1.2);
 
   const editor = useEditor({
-    extensions: [StarterKit],
+    extensions: editorExtensions,
     content: {},
     onUpdate: ({ editor }) => {
       answerRef.current = editor.getJSON() as Record<string, unknown>;

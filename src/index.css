@@ -23,6 +23,49 @@ body {
   cursor: text;
 }
 
+.editor-surface .tiptap p {
+  line-height: 1.6;
+  margin-bottom: 0.9em;
+}
+
+.editor-surface .tiptap p:last-child {
+  margin-bottom: 0;
+}
+
 .editor-surface .tiptap p.is-editor-empty:first-child::before {
   content: '';
 }
+
+/* Headings */
+.editor-surface .tiptap h1 {
+  font-size: 2em;
+  font-weight: bold;
+  margin-bottom: 0.5em;
+}
+
+.editor-surface .tiptap h2 {
+  font-size: 1.5em;
+  font-weight: bold;
+  margin-bottom: 0.5em;
+}
+
+/* Lists — Google Docs nesting conventions */
+.editor-surface .tiptap ul,
+.editor-surface .tiptap ol {
+  padding-left: 1.5em;
+  margin-bottom: 0.9em;
+}
+
+.editor-surface .tiptap li {
+  margin-bottom: 0.2em;
+}
+
+/* Ordered list levels: 1. → a. → i. */
+.editor-surface .tiptap ol { list-style-type: decimal; }
+.editor-surface .tiptap ol ol { list-style-type: lower-alpha; }
+.editor-surface .tiptap ol ol ol { list-style-type: lower-roman; }
+
+/* Unordered list levels: ● → ○ → ■ */
+.editor-surface .tiptap ul { list-style-type: disc; }
+.editor-surface .tiptap ul ul { list-style-type: circle; }
+.editor-surface .tiptap ul ul ul { list-style-type: square; }
