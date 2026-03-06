@@ -77,11 +77,17 @@ export const IndentExtension = Extension.create({
         const { $from, empty } = editor.state.selection
         if (!empty) return false
 
-        const node = $from.parent
-        const currentIndent = node.attrs.indent ?? 0
+        if ($from.parentOffset !== 0) return false
 
-        // Only intercept if cursor is at start of node and indent > 0
-        if ($from.parentOffset === 0 && currentIndent > 0) {
+        // If inside a list item, lift it out to a paragraph instead of joining with previous item
+        const depth = $from.depth
+        if (depth >= 2 && $from.node(depth - 1).type.name === 'listItem') {
+          return editor.commands.liftListItem('listItem')
+        }
+
+        // If indented, remove one indent level
+        const currentIndent = $from.parent.attrs.indent ?? 0
+        if (currentIndent > 0) {
           return editor.commands.decreaseIndent()
         }
         return false
