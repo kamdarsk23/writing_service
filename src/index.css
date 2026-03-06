@@ -23,6 +23,15 @@ body {
   cursor: text;
 }
 
+.editor-surface .tiptap p {
+  line-height: 1.6;
+  margin-bottom: 0.9em;
+}
+
+.editor-surface .tiptap p:last-child {
+  margin-bottom: 0;
+}
+
 .editor-surface .tiptap p.is-editor-empty:first-child::before {
   content: '';
 }
