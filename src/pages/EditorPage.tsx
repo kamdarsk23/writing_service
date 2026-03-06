@@ -3,6 +3,9 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useWorks } from '../hooks/useWorks';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
+import { ListInputRules } from '../extensions/listInputRules';
+import { IndentExtension } from '../extensions/IndentExtension';
+import { HeadingInputRules } from '../extensions/headingInputRules';
 
 export function EditorPage() {
   const { workId } = useParams();
@@ -16,7 +19,7 @@ export function EditorPage() {
   const [, forceRender] = useReducer((x: number) => x + 1, 0);
 
   const editor = useEditor({
-    extensions: [StarterKit],
+    extensions: [StarterKit, ListInputRules, IndentExtension, HeadingInputRules],
     content: {},
     onUpdate: ({ editor }) => {
       contentRef.current = editor.getJSON() as Record<string, unknown>;
