@@ -25,11 +25,13 @@
           !h.startsWith('#access_token')
         ) {
           var i = h.indexOf('access_token=');
-          window.history.replaceState(
-            null,
-            '',
-            window.location.pathname + window.location.search + '#' + h.slice(i)
-          );
+          if (i !== -1) {
+            window.history.replaceState(
+              null,
+              '',
+              window.location.pathname + window.location.search + '#' + h.slice(i)
+            );
+          }
         }
       })();
     </script>

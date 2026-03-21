@@ -26,8 +26,8 @@ export function UpdatePasswordPage() {
           await new Promise((r) => setTimeout(r, delayMs));
         }
         if (cancelled) return;
-        const { data } = await supabase.auth.getSession();
-        if (data.session) {
+        const { data, error } = await supabase.auth.getSession();
+        if (!error && data.session) {
           if (!cancelled) setPolledSession(data.session);
           return;
         }
