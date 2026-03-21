@@ -4,6 +4,9 @@ type AuditAction = 'created' | 'edited' | 'deleted';
 
 const CSV_HEADER = 'date,time,piece_name,action';
 
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
 function corsHeaders(req: Request): HeadersInit {
   const origin = req.headers.get('Origin') ?? '*';
   return {
@@ -202,9 +205,12 @@ Deno.serve(async (req) => {
   }
 
   const action = body.action as AuditAction | undefined;
-  const workId = body.workId;
+  const workId = typeof body.workId === 'string' ? body.workId.trim() : '';
   if (!action || !workId || !['created', 'edited', 'deleted'].includes(action)) {
     return new Response(JSON.stringify({ error: 'Invalid action or workId' }), { status: 400, headers });
+  }
+  if (!UUID_RE.test(workId)) {
+    return new Response(JSON.stringify({ error: 'Invalid workId' }), { status: 400, headers });
   }
 
   const admin = createClient(supabaseUrl, serviceRole);

@@ -26,55 +26,72 @@ function hashLooksLikePasswordRecovery(hash: string): boolean {
  *    update-password without a session (that caused "invalid link" on first open).
  */
 async function prepareAuthUrlForHashRouter(): Promise<void> {
-  const { pathname, search } = window.location;
-  let h = window.location.hash;
-  const recoveryFromUrl = hashLooksLikePasswordRecovery(h);
-  // Truncated Site URL in Supabase often becomes .../update-passwo
-  if (h === '#/auth/update-passwo' || h.startsWith('#/auth/update-passwo?')) {
-    window.history.replaceState(null, '', `${pathname}${search}#/auth/update-password`);
-    h = '#/auth/update-password';
-  }
-
-  let passwordRecovery = false;
-  const {
-    data: { subscription },
-  } = supabase.auth.onAuthStateChange((event) => {
-    if (event === 'PASSWORD_RECOVERY') {
-      passwordRecovery = true;
+  try {
+    const { pathname, search } = window.location;
+    let h = window.location.hash;
+    const recoveryFromUrl = hashLooksLikePasswordRecovery(h);
+    // Truncated Site URL in Supabase often becomes .../update-passwo
+    if (h === '#/auth/update-passwo' || h.startsWith('#/auth/update-passwo?')) {
+      window.history.replaceState(null, '', `${pathname}${search}#/auth/update-password`);
+      h = '#/auth/update-password';
     }
-  });
 
-  await supabase.auth.getSession();
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
+    let passwordRecovery = false;
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'PASSWORD_RECOVERY') {
+        passwordRecovery = true;
+      }
+    });
 
-  // GoTrue may emit PASSWORD_RECOVERY on the next tick or slightly later; don't unlisten too soon.
-  await new Promise((r) => setTimeout(r, 0));
-  await new Promise((r) => setTimeout(r, 100));
-  subscription.unsubscribe();
+    await supabase.auth.getSession();
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
 
-  if (session && (passwordRecovery || recoveryFromUrl)) {
-    window.history.replaceState(null, '', `${pathname}${search}#/auth/update-password`);
-    return;
-  }
+    // GoTrue may emit PASSWORD_RECOVERY on the next tick or slightly later; don't unlisten too soon.
+    await new Promise((r) => setTimeout(r, 0));
+    await new Promise((r) => setTimeout(r, 100));
+    subscription.unsubscribe();
 
-  if (h && !h.startsWith('#/')) {
-    if (h.includes('error_code') || h.includes('error_description')) {
-      window.history.replaceState(null, '', `${pathname}${search}#/auth`);
+    let sessionOut = session;
+    // Session can lag URL parsing on cold start; don't send recovery users to /auth too early.
+    if ((passwordRecovery || recoveryFromUrl) && !sessionOut) {
+      await new Promise((r) => setTimeout(r, 250));
+      const { data: later } = await supabase.auth.getSession();
+      sessionOut = later.session ?? null;
+    }
+
+    if (sessionOut && (passwordRecovery || recoveryFromUrl)) {
+      window.history.replaceState(null, '', `${pathname}${search}#/auth/update-password`);
       return;
     }
-    if (
-      (h.includes('access_token') || h.includes('type=recovery')) &&
-      !session
-    ) {
-      window.history.replaceState(null, '', `${pathname}${search}#/auth`);
+
+    if (h && !h.startsWith('#/')) {
+      if (h.includes('error_code') || h.includes('error_description')) {
+        window.history.replaceState(null, '', `${pathname}${search}#/auth`);
+        return;
+      }
+      if (
+        (h.includes('access_token') || h.includes('type=recovery')) &&
+        !sessionOut
+      ) {
+        window.history.replaceState(null, '', `${pathname}${search}#/auth`);
+      }
     }
+  } catch (e) {
+    console.warn('[auth bootstrap]', e instanceof Error ? e.message : e);
   }
 }
 
 void prepareAuthUrlForHashRouter().then(() => {
-  createRoot(document.getElementById('root')!).render(
+  const rootEl = document.getElementById('root');
+  if (!rootEl) {
+    console.error('[auth bootstrap] #root missing');
+    return;
+  }
+  createRoot(rootEl).render(
     <StrictMode>
       <App />
     </StrictMode>,
