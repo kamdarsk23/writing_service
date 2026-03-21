@@ -1,0 +1,9 @@
+# Local / CLI config. Link: supabase link --project-ref <ref>
+# Docs: https://supabase.com/docs/guides/local-development/cli/config
+
+project_id = "writing_service"
+
+# Gateway JWT check is off; the function still validates the user with auth.getUser().
+# Avoids 401 Invalid JWT when the platform and browser session disagree on the token shape.
+[functions.append-writing-log]
+verify_jwt = false

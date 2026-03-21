@@ -1,9 +1,14 @@
 import { createHashRouter, Outlet } from 'react-router-dom';
+
+function AuthRoutesOutlet() {
+  return <Outlet />;
+}
 import { AuthPage } from './pages/AuthPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { EditorPage } from './pages/EditorPage';
 import { QTreePage } from './pages/QTreePage';
 import { QTreeEditorPage } from './pages/QTreeEditorPage';
+import { UpdatePasswordPage } from './pages/UpdatePasswordPage';
 import { ProtectedRoute } from './components/auth/ProtectedRoute';
 import { AppLayout } from './components/layout/AppLayout';
 import { AuthProvider } from './contexts/AuthContext';
@@ -23,7 +28,11 @@ export const router = createHashRouter([
     children: [
       {
         path: 'auth',
-        element: <AuthPage />,
+        element: <AuthRoutesOutlet />,
+        children: [
+          { index: true, element: <AuthPage /> },
+          { path: 'update-password', element: <UpdatePasswordPage /> },
+        ],
       },
       {
         path: '',

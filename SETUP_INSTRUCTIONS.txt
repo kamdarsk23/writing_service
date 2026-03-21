@@ -1,0 +1,298 @@
+================================================================================
+WRITING SERVICE — GITHUB AUDIT LOG SETUP
+================================================================================
+
+WHAT THIS DOES
+  When you create, edit, or delete a "work" in the app, an Edge Function can
+  append one line to a CSV file in a GitHub repo (one Git commit per event).
+  The app only does this if VITE_WRITING_AUDIT_ENABLED is set to true in your
+  Vite environment (see Step 6).
+
+DO THESE STEPS IN ORDER
+  Step 1  Create the GitHub repo
+  Step 2  Create a GitHub token
+  Step 3  Install Supabase CLI and link this project
+  Step 4  Deploy the Edge Function
+  Step 5  Set Supabase secrets for GitHub
+  Step 6  Configure your app .env file
+  Step 7  (Optional) Test the function locally
+  Step 8  Verify everything works
+  Step 9  Security reminders
+
+Template for Step 6: copy .env.example to .env in the project root (same
+folder as package.json). Never commit .env to git.
+
+
+================================================================================
+STEP 1 — CREATE THE GITHUB REPOSITORY
+================================================================================
+
+  1. On github.com, create a new repository (private is fine). Example name:
+     writing-audit-log
+
+  2. Use the default branch name "main". The function assumes "main" unless
+     you set a different GITHUB_BRANCH secret later.
+
+  3. You do not need to add any files. The first successful run will create
+     the CSV file (default name: writing_audit.csv) with this header row:
+     date,time,piece_name,action
+     Date and time are stored in UTC.
+
+
+================================================================================
+STEP 2 — CREATE A GITHUB TOKEN
+================================================================================
+
+The Edge Function needs permission to read and update file contents in that
+repo only. Pick one approach:
+
+OPTION A — FINE-GRAINED TOKEN (RECOMMENDED)
+  1. GitHub: Settings → Developer settings → Fine-grained personal access tokens
+  2. Generate new token
+  3. Choose your account (or org) as resource owner
+  4. Under Repository access, select only the audit repository
+  5. Under Repository permissions, set Contents to Read and write
+  6. Generate the token and copy it immediately (you cannot see it again)
+
+OPTION B — CLASSIC TOKEN
+  1. GitHub: Settings → Developer settings → Personal access tokens
+  2. Create a token that can write to that repo (for a private repo, the
+     "repo" scope is the usual choice)
+
+Keep the token safe until Step 5. Do not paste it into the app's .env file.
+
+
+================================================================================
+STEP 3 — SUPABASE CLI: INSTALL, LOGIN, LINK
+================================================================================
+
+  1. Install the Supabase CLI. On macOS with Homebrew:
+       brew install supabase/tap/supabase
+     Other systems:
+       https://supabase.com/docs/guides/cli
+
+  2. Log in:
+       supabase login
+
+  3. Open a terminal in this project's root folder (where package.json is).
+
+  4. Link your hosted Supabase project (replace YOUR_PROJECT_REF):
+       supabase link --project-ref YOUR_PROJECT_REF
+
+     Your project ref is in the Supabase dashboard:
+     Project Settings → General → Reference ID
+
+This repo already configures verify_jwt for the function append-writing-log,
+so only signed-in users can call it.
+
+
+================================================================================
+STEP 4 — DEPLOY THE EDGE FUNCTION
+================================================================================
+
+From the same project root folder, run (name is all hyphens, no underscores):
+
+  supabase functions deploy append-writing-log
+
+If you see a missing index.ts error, you mistyped the name (wrong:
+append_writing-log). Confirm in the Supabase dashboard:
+  Edge Functions → you see "append-writing-log"
+
+
+================================================================================
+STEP 5 — SET SUPABASE SECRETS (NOT IN YOUR APP .ENV)
+================================================================================
+
+These secrets are stored on Supabase for the Edge Function. They are not VITE_
+variables and do not go in your frontend .env file.
+
+Required secrets:
+  GITHUB_TOKEN     The token from Step 2
+  GITHUB_OWNER     Your GitHub username or the org name that owns the repo
+  GITHUB_REPO      Only the repository name, e.g. writing-audit-log
+
+Optional secrets:
+  GITHUB_FILE_PATH   Default is writing_audit.csv. Example for a subfolder:
+                     logs/audit.csv
+  GITHUB_BRANCH      Default is main
+
+Example command (replace the placeholder values):
+
+  supabase secrets set GITHUB_TOKEN="paste_token_here" GITHUB_OWNER="your_username" GITHUB_REPO="writing-audit-log"
+
+Optional example:
+
+  supabase secrets set GITHUB_FILE_PATH="writing_audit.csv" GITHUB_BRANCH="main"
+
+List what is set (exact output depends on CLI version):
+
+  supabase secrets list
+
+Note: On hosted Supabase, SUPABASE_URL, SUPABASE_ANON_KEY, and
+SUPABASE_SERVICE_ROLE_KEY are usually provided automatically to Edge Functions.
+If you run the function locally with supabase functions serve and see a server
+misconfiguration error, you may need a supabase/.env file with your service role
+key — see Supabase docs for local development.
+
+
+================================================================================
+STEP 6 — APP ENVIRONMENT FILE (.env)
+================================================================================
+
+The React app only reads variables that start with VITE_
+
+  1. In the project root, create or edit a file named .env
+     Easiest: copy .env.example to .env
+
+  2. Set your Supabase values from the dashboard:
+     Project Settings → API
+       VITE_SUPABASE_PROJECT_URL   = Project URL
+       VITE_SUPABASE_ANON_KEY      = anon public key
+
+  3. After Steps 1–5 are done, turn on the audit feature:
+       VITE_WRITING_AUDIT_ENABLED=true
+     It must be lowercase true with no spaces. If this line is missing or not
+     true, the app will not call the Edge Function.
+
+Example .env content (replace placeholders):
+
+  VITE_SUPABASE_PROJECT_URL=https://YOUR_PROJECT_REF.supabase.co
+  VITE_SUPABASE_ANON_KEY=your_anon_key_here
+  VITE_WRITING_AUDIT_ENABLED=true
+
+After you change .env:
+  - Local development: stop and start again: npm run dev
+  - Production: run npm run build again and deploy the new build. Vite bakes
+    these values in at build time.
+
+If you deploy with Vercel, Netlify, GitHub Actions, or similar: add the same
+three VITE_ variables in that platform's environment settings for the build.
+
+Do not put GITHUB_TOKEN or SUPABASE_SERVICE_ROLE_KEY in this .env file.
+
+
+================================================================================
+STEP 7 — OPTIONAL: RUN THE FUNCTION LOCALLY
+================================================================================
+
+  1. Read Supabase CLI docs for loading secrets from supabase/.env when using
+     functions serve.
+
+  2. Example:
+       supabase functions serve append-writing-log --env-file supabase/.env
+
+The easiest way to verify is usually: deploy the function (Step 4), set
+secrets (Step 5), use a real .env with VITE_WRITING_AUDIT_ENABLED=true, and
+run npm run dev against the hosted Supabase project.
+
+
+================================================================================
+STEP 8 — VERIFY
+================================================================================
+
+  1. Sign in to the app.
+  2. Create a new work. Check the GitHub repo for a new commit and a new row
+     with action "created".
+  3. Open the work in the editor and save. Check for a row with "edited".
+  4. Delete a work. Check for "deleted". The app calls the audit function
+     before deleting the row so the title can be read.
+
+If it fails:
+  Open Supabase dashboard → Edge Functions → append-writing-log → Logs
+
+Common problems:
+  401 — Not logged in to the app, or session problem
+  403 or 404 — Work does not belong to this user, or wrong work id
+  502 — GitHub rejected the request: wrong token, wrong owner/repo name,
+        token missing Contents write, wrong branch, or wrong file path
+  500 Server misconfigured — Missing GITHUB_* secrets on Supabase, or local
+        serve missing service role
+
+If no audit calls happen at all: confirm VITE_WRITING_AUDIT_ENABLED=true,
+restart the dev server, or rebuild for production.
+
+
+================================================================================
+PASSWORD RESET (FORGOT PASSWORD)
+================================================================================
+
+The sign-in screen has "Forgot password?" — it emails a Supabase recovery link.
+
+Before that works, add your reset landing URL to Supabase:
+
+  Dashboard → Authentication → URL configuration → Redirect URLs
+
+Add BOTH (adjust host and path for how you run the app):
+
+  Local dev (example):
+    http://localhost:5173/writing_service/#/auth/update-password
+
+  GitHub Pages (example):
+    https://YOUR_USER.github.io/writing_service/#/auth/update-password
+
+The path must match your Vite base (here: /writing_service/) plus #/auth/update-password
+
+The email link puts Supabase tokens in the URL hash in a form that is NOT a router
+path. The app normalizes that to #/auth/update-password after reading the session.
+If you still see 404 on GitHub Pages, ensure deploy runs "predeploy" so dist/404.html
+exists (copy of index.html) for SPA fallback on wrong paths.
+
+You do not need your old password to sign OUT — use Sign out in the app header
+if you only need a fresh login after resetting.
+
+As project owner you can also use Dashboard → Authentication → Users → select
+your user → use password / recovery actions if your Supabase plan shows them.
+
+EMAIL RATE LIMIT ("email rate limit exceeded")
+  Supabase caps how many auth emails (reset, magic link, signup) your project can
+  send per hour. After many tests you will hit that cap.
+
+  What to do:
+    - Wait until the window resets (often up to an hour; exact policy is in docs).
+    - In the Supabase Dashboard, open your project → Authentication (or Project
+      Settings → Auth, depending on UI version) and look for Rate limits /
+      "Emails sent" or similar — raise the cap for development if your plan allows.
+    - Avoid clicking "Send reset link" repeatedly while debugging.
+
+  As project owner you can still set a password from Dashboard → Authentication →
+  Users → your user, without sending another email, if that action is available.
+
+
+================================================================================
+STEP 9 — SECURITY
+================================================================================
+
+  - Never commit .env to git
+  - Never put GITHUB_TOKEN in the frontend .env
+  - Never expose SUPABASE_SERVICE_ROLE_KEY in the browser
+  - Use a private GitHub repo if the CSV should stay private
+
+
+================================================================================
+WHERE THE CODE LIVES (REFERENCE)
+================================================================================
+
+  supabase/functions/append-writing-log/index.ts
+    Edge Function: checks user, reads work from database, appends CSV via
+    GitHub API.
+
+  src/lib/logWritingAudit.ts
+    Calls the function when VITE_WRITING_AUDIT_ENABLED is true.
+
+  src/hooks/useWorks.ts
+    Triggers logging on create, update, rename, move; before delete for
+    delete events.
+
+
+================================================================================
+GITHUB PROFILE CONTRIBUTION GRAPH
+================================================================================
+
+Commits will show on that repository's commit history. Whether they count on
+your personal GitHub contribution graph depends on GitHub's rules (default
+branch, email on commits, private contributions setting, etc.). See:
+https://docs.github.com/en/account-and-profile/setting-up-and-managing-your-github-profile/managing-contribution-settings-on-your-profile/why-are-my-contributions-not-showing-up-on-my-profile
+
+================================================================================
+END OF SETUP_INSTRUCTIONS.txt
+================================================================================

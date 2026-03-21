@@ -1,6 +1,7 @@
 import { createContext, useEffect, useState, type ReactNode } from 'react';
 import type { Session, User } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
+import { getPasswordRecoveryRedirectTo } from '../lib/authRedirect';
 
 export interface AuthContextType {
   session: Session | null;
@@ -8,6 +9,7 @@ export interface AuthContextType {
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
+  requestPasswordReset: (email: string) => Promise<{ error: Error | null }>;
 }
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -43,8 +45,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await supabase.auth.signOut();
   };
 
+  const requestPasswordReset = async (email: string) => {
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: getPasswordRecoveryRedirectTo(),
+    });
+    return { error: error as Error | null };
+  };
+
   return (
-    <AuthContext.Provider value={{ session, user, loading, signIn, signOut }}>
+    <AuthContext.Provider
+      value={{ session, user, loading, signIn, signOut, requestPasswordReset }}
+    >
       {children}
     </AuthContext.Provider>
   );

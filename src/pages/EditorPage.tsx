@@ -9,20 +9,38 @@ import { HeadingInputRules } from '../extensions/headingInputRules';
 
 const editorExtensions = [StarterKit, ListInputRules, IndentExtension, HeadingInputRules];
 
+/** Valid empty TipTap doc; `{}` from DB or `content: {}` breaks ProseMirror ("Unknown node type: undefined"). */
+const EMPTY_DOC: Record<string, unknown> = {
+  type: 'doc',
+  content: [{ type: 'paragraph' }],
+};
+
+function sanitizeTipTapContent(raw: Record<string, unknown>): Record<string, unknown> {
+  if (!raw || typeof raw !== 'object' || raw.type !== 'doc' || !Array.isArray(raw.content)) {
+    return { ...EMPTY_DOC };
+  }
+  for (const node of raw.content) {
+    if (!node || typeof node !== 'object' || typeof (node as { type?: unknown }).type !== 'string') {
+      return { ...EMPTY_DOC };
+    }
+  }
+  return raw;
+}
+
 export function EditorPage() {
   const { workId } = useParams();
   const navigate = useNavigate();
   const { fetchWork, updateWork } = useWorks();
   const titleRef = useRef('');
-  const contentRef = useRef<Record<string, unknown>>({});
-  const loadedContentRef = useRef<Record<string, unknown>>({});
+  const contentRef = useRef<Record<string, unknown>>({ ...EMPTY_DOC });
+  const loadedContentRef = useRef<Record<string, unknown>>({ ...EMPTY_DOC });
   const folderIdRef = useRef<string | null>(null);
   const loadingRef = useRef(true);
   const [, forceRender] = useReducer((x: number) => x + 1, 0);
 
   const editor = useEditor({
     extensions: editorExtensions,
-    content: {},
+    content: { ...EMPTY_DOC },
     onUpdate: ({ editor }) => {
       contentRef.current = editor.getJSON() as Record<string, unknown>;
     },
@@ -35,8 +53,11 @@ export function EditorPage() {
     fetchWork(workId).then((work) => {
       if (work) {
         titleRef.current = work.title;
-        contentRef.current = work.content;
-        loadedContentRef.current = work.content;
+        const safe = sanitizeTipTapContent(
+          (work.content ?? {}) as Record<string, unknown>,
+        );
+        contentRef.current = safe;
+        loadedContentRef.current = safe;
         folderIdRef.current = work.folder_id;
       } else {
         navigate('/');
@@ -47,8 +68,12 @@ export function EditorPage() {
   }, [workId, fetchWork, navigate]);
 
   useEffect(() => {
-    if (editor && !loadingRef.current && Object.keys(loadedContentRef.current).length > 0) {
-      editor.commands.setContent(loadedContentRef.current);
+    if (!editor || loadingRef.current) return;
+    const doc = loadedContentRef.current;
+    try {
+      editor.commands.setContent(doc);
+    } catch {
+      editor.commands.setContent({ ...EMPTY_DOC });
     }
   }, [editor, loadingRef.current]);
 
