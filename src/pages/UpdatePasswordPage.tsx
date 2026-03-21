@@ -1,15 +1,46 @@
-import { useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
+import type { Session } from '@supabase/supabase-js';
 import { Link, Navigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
 
+/**
+ * After a recovery redirect, React context can briefly lag behind storage.
+ * Poll getSession a few times before showing "invalid or expired".
+ */
 export function UpdatePasswordPage() {
-  const { session, loading } = useAuth();
+  const { session: ctxSession, loading: authLoading } = useAuth();
+  const [polledSession, setPolledSession] = useState<Session | null | undefined>(undefined);
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [error, setError] = useState('');
   const [done, setDone] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (authLoading) return;
+    let cancelled = false;
+    void (async () => {
+      for (const delayMs of [0, 80, 200, 450]) {
+        if (delayMs > 0) {
+          await new Promise((r) => setTimeout(r, delayMs));
+        }
+        if (cancelled) return;
+        const { data } = await supabase.auth.getSession();
+        if (data.session) {
+          if (!cancelled) setPolledSession(data.session);
+          return;
+        }
+      }
+      if (!cancelled) setPolledSession(null);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [authLoading]);
+
+  const loading = authLoading || (ctxSession == null && polledSession === undefined);
+  const session = ctxSession ?? polledSession ?? null;
 
   if (loading) {
     return (
@@ -25,6 +56,11 @@ export function UpdatePasswordPage() {
         <div className="w-full max-w-sm p-6 bg-white rounded shadow text-center">
           <p className="text-gray-700 mb-4">
             This reset link is invalid or expired. Request a new one from the sign-in page.
+          </p>
+          <p className="text-sm text-gray-500 mb-4">
+            In Supabase → Authentication → URL configuration, set Site URL and Redirect URLs
+            to your app base with a trailing slash (e.g. …/writing_service/) — required for
+            Vite. No hash in the URL. Save, then request a new reset email.
           </p>
           <Link to="/auth" className="text-blue-600 underline">
             Back to sign in
