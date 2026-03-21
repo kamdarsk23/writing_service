@@ -1,5 +1,6 @@
 import { useCallback, useState } from 'react';
 import { supabase } from '../lib/supabase';
+import { logWritingAudit } from '../lib/logWritingAudit';
 import type { Work } from '../types';
 import { useAuth } from './useAuth';
 
@@ -59,6 +60,7 @@ export function useWorks() {
       .single();
 
     if (error) return null;
+    await logWritingAudit({ action: 'created', workId: data.id });
     return data;
   };
 
@@ -66,6 +68,7 @@ export function useWorks() {
     const { error } = await supabase.from('works').update({ title }).eq('id', id);
     if (!error) {
       setWorks((prev) => prev.map((w) => (w.id === id ? { ...w, title } : w)));
+      await logWritingAudit({ action: 'edited', workId: id });
     }
     return { error };
   };
@@ -75,10 +78,14 @@ export function useWorks() {
     updates: { title?: string; content?: Record<string, unknown> },
   ) => {
     const { error } = await supabase.from('works').update(updates).eq('id', id);
+    if (!error) {
+      await logWritingAudit({ action: 'edited', workId: id });
+    }
     return { error };
   };
 
   const deleteWork = async (id: string) => {
+    await logWritingAudit({ action: 'deleted', workId: id });
     const { error } = await supabase.from('works').delete().eq('id', id);
     if (!error) {
       setWorks((prev) => prev.filter((w) => w.id !== id));
@@ -93,6 +100,7 @@ export function useWorks() {
       .eq('id', workId);
     if (!error) {
       setWorks((prev) => prev.filter((w) => w.id !== workId));
+      await logWritingAudit({ action: 'edited', workId });
     }
     return { error };
   };
