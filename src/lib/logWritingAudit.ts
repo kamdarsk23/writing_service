@@ -1,8 +1,53 @@
-import { supabase } from './supabase';
+import { supabase, supabaseAnonKey, supabaseUrl } from './supabase';
 
 export type WritingAuditAction = 'created' | 'edited' | 'deleted';
 
 const AUDIT_FETCH_MS = 25_000;
+/** If access token expires within this many seconds, refresh before calling the Edge Function. */
+const AUDIT_REFRESH_MARGIN_SEC = 120;
+
+function accessTokenExpiresAtSec(token: string): number | null {
+  try {
+    const seg = token.split('.')[1];
+    if (!seg) return null;
+    const json = JSON.parse(
+      atob(seg.replace(/-/g, '+').replace(/_/g, '/')),
+    ) as { exp?: unknown };
+    return typeof json.exp === 'number' ? json.exp : null;
+  } catch {
+    return null;
+  }
+}
+
+/** User JWT for the function: refresh if near expiry so the gateway accepts Bearer (when verify_jwt is on). */
+async function getAccessTokenForAudit(): Promise<string | null> {
+  const {
+    data: { session },
+    error: sessionError,
+  } = await supabase.auth.getSession();
+
+  if (sessionError || !session?.access_token) {
+    return null;
+  }
+
+  let token = session.access_token;
+  const exp = accessTokenExpiresAtSec(token);
+  const now = Math.floor(Date.now() / 1000);
+  const needsRefresh = exp != null && exp < now + AUDIT_REFRESH_MARGIN_SEC;
+
+  if (needsRefresh) {
+    const { data, error: refErr } = await supabase.auth.refreshSession();
+    if (refErr || !data.session?.access_token) {
+      if (import.meta.env.DEV) {
+        console.warn('[writing-audit] refresh failed; audit may 401', refErr?.message ?? '');
+      }
+      return null;
+    }
+    token = data.session.access_token;
+  }
+
+  return token;
+}
 
 function isAllowedSupabaseProjectUrl(url: string): boolean {
   try {
@@ -27,7 +72,8 @@ function isAllowedSupabaseProjectUrl(url: string): boolean {
  * a stale refresh token surfaces as `Invalid Refresh Token` in the console even though we
  * passed a user JWT — the DB write already succeeded.
  *
- * One `getSession()` here, then send that access_token; no extra refresh on this request.
+ * Refreshes the session when the access token is inside AUDIT_REFRESH_MARGIN_SEC of expiry,
+ * then plain `fetch` (no invoke) so we do not double-trigger getAccessToken on the same request.
  *
  * For `deleted`, call this while the row still exists (before DELETE), so the function can read `title`.
  */
@@ -46,23 +92,14 @@ export async function logWritingAudit(payload: {
     return;
   }
 
-  const supabaseUrl = import.meta.env.VITE_SUPABASE_PROJECT_URL as string | undefined;
-  const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
-  if (!supabaseUrl?.trim() || !anonKey?.trim()) {
+  if (!supabaseUrl?.trim() || !supabaseAnonKey?.trim()) {
     console.warn('[writing-audit] skipped: missing VITE_SUPABASE_PROJECT_URL or VITE_SUPABASE_ANON_KEY');
     return;
   }
 
-  const {
-    data: { session },
-    error: sessionError,
-  } = await supabase.auth.getSession();
-
-  if (sessionError || !session?.access_token) {
-    console.warn(
-      '[writing-audit] skipped: no user JWT from getSession()',
-      sessionError?.message ?? '',
-    );
+  const accessToken = await getAccessTokenForAudit();
+  if (!accessToken) {
+    console.warn('[writing-audit] skipped: no valid user access token');
     return;
   }
 
@@ -81,8 +118,8 @@ export async function logWritingAudit(payload: {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${session.access_token}`,
-        apikey: anonKey,
+        Authorization: `Bearer ${accessToken}`,
+        apikey: supabaseAnonKey,
       },
       body: JSON.stringify(payload),
       signal: controller.signal,

@@ -3,7 +3,11 @@
 
 project_id = "writing_service"
 
-# Gateway JWT check is off; the function still validates the user with auth.getUser().
-# Avoids 401 Invalid JWT when the platform and browser session disagree on the token shape.
+# Gateway JWT check must be OFF or the API returns 401 {"message":"Invalid JWT"} before
+# this code runs (expired/margin tokens, hash-router timing). The function still checks the
+# user via auth.getUser().
+#
+# Deploy from this folder (or pass --workdir):
+#   supabase functions deploy append-writing-log --no-verify-jwt
 [functions.append-writing-log]
 verify_jwt = false

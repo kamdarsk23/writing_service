@@ -46,6 +46,35 @@ function encodeRepoPath(path: string): string {
   return path.split('/').map(encodeURIComponent).join('/');
 }
 
+async function getGithubRepoDefaultBranch(
+  owner: string,
+  repo: string,
+  token: string,
+): Promise<string> {
+  const url = `https://api.github.com/repos/${owner}/${repo}`;
+  const res = await fetch(url, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+      Accept: 'application/vnd.github+json',
+      'X-GitHub-Api-Version': '2022-11-28',
+    },
+  });
+
+  if (res.status === 404) {
+    throw new Error(
+      `GitHub repo not found or token cannot access it: ${owner}/${repo}. ` +
+        'Check GITHUB_OWNER, GITHUB_REPO, and token repo permissions.',
+    );
+  }
+  if (!res.ok) {
+    const t = await res.text();
+    throw new Error(`GitHub repo lookup ${res.status}: ${t}`);
+  }
+
+  const data = (await res.json()) as { default_branch?: string };
+  return data.default_branch || 'main';
+}
+
 async function getGithubFile(
   owner: string,
   repo: string,
@@ -61,7 +90,15 @@ async function getGithubFile(
       'X-GitHub-Api-Version': '2022-11-28',
     },
   });
-  if (res.status === 404) return null;
+  if (res.status === 404) {
+    const t = await res.text();
+    if (t.includes('No commit found for the ref')) {
+      throw new Error(
+        `GitHub branch not found: ${branch}. Set GITHUB_BRANCH to an existing branch.`,
+      );
+    }
+    return null;
+  }
   if (!res.ok) {
     const t = await res.text();
     throw new Error(`GitHub GET ${res.status}: ${t}`);
@@ -104,7 +141,9 @@ async function putGithubFile(
 
   if (res.ok) return;
   const t = await res.text();
-  throw new Error(`GitHub PUT ${res.status}: ${t}`);
+  throw new Error(
+    `GitHub PUT ${res.status} (repo=${owner}/${repo} branch=${branch} path=${filePath}): ${t}`,
+  );
 }
 
 async function appendCsvRow(
@@ -175,7 +214,7 @@ Deno.serve(async (req) => {
   const owner = Deno.env.get('GITHUB_OWNER');
   const repo = Deno.env.get('GITHUB_REPO');
   const filePath = Deno.env.get('GITHUB_FILE_PATH') ?? 'writing_audit.csv';
-  const branch = Deno.env.get('GITHUB_BRANCH') ?? 'main';
+  const branchFromEnv = Deno.env.get('GITHUB_BRANCH')?.trim();
 
   if (!supabaseUrl || !anonKey || !serviceRole || !githubToken || !owner || !repo) {
     return new Response(JSON.stringify({ error: 'Server misconfigured' }), { status: 500, headers });
@@ -231,6 +270,10 @@ Deno.serve(async (req) => {
   }
 
   try {
+    const branch =
+      branchFromEnv && branchFromEnv.length > 0
+        ? branchFromEnv
+        : await getGithubRepoDefaultBranch(owner, repo, githubToken);
     await appendCsvRow(owner, repo, filePath, branch, githubToken, work.title, action);
   } catch (e) {
     const message = e instanceof Error ? e.message : 'GitHub error';
