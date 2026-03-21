@@ -1,8 +1,4 @@
-import { createHashRouter, Outlet } from 'react-router-dom';
-
-function AuthRoutesOutlet() {
-  return <Outlet />;
-}
+import { createHashRouter, Navigate, Outlet } from 'react-router-dom';
 import { AuthPage } from './pages/AuthPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { EditorPage } from './pages/EditorPage';
@@ -12,6 +8,10 @@ import { UpdatePasswordPage } from './pages/UpdatePasswordPage';
 import { ProtectedRoute } from './components/auth/ProtectedRoute';
 import { AppLayout } from './components/layout/AppLayout';
 import { AuthProvider } from './contexts/AuthContext';
+
+function AuthRoutesOutlet() {
+  return <Outlet />;
+}
 
 function AuthLayout() {
   return (
@@ -32,6 +32,8 @@ export const router = createHashRouter([
         children: [
           { index: true, element: <AuthPage /> },
           { path: 'update-password', element: <UpdatePasswordPage /> },
+          // Dashboard typo / truncated Site URL (update-passwo) still lands here
+          { path: 'update-passwo', element: <Navigate to="/auth/update-password" replace /> },
         ],
       },
       {
