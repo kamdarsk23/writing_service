@@ -30,6 +30,7 @@ jobs:
         env:
           VITE_SUPABASE_PROJECT_URL: ${{ secrets.VITE_SUPABASE_PROJECT_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+          VITE_WRITING_AUDIT_ENABLED: ${{ secrets.VITE_WRITING_AUDIT_ENABLED }}
 
       - name: Verify build output
         run: |
