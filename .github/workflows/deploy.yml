@@ -31,6 +31,7 @@ jobs:
           VITE_SUPABASE_PROJECT_URL: ${{ secrets.VITE_SUPABASE_PROJECT_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
           VITE_WRITING_AUDIT_ENABLED: ${{ secrets.VITE_WRITING_AUDIT_ENABLED }}
+          VITE_OWNER_EMAIL: ${{ secrets.VITE_OWNER_EMAIL }}
 
       - name: Verify build output
         run: |
