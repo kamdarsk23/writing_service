@@ -92,11 +92,11 @@ export function EditorPage() {
   // Keyboard shortcuts
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      if (e.metaKey && e.key === 'd') {
+      if ((e.metaKey && e.key === 'd') || (e.ctrlKey && e.key === 's')) {
         e.preventDefault();
         handleSave();
       }
-      if (e.metaKey && e.key === 'e') {
+      if (e.metaKey && e.key === 'e' || e.ctrlKey && e.key === 'l') {
         e.preventDefault();
         handleBack();
       }
