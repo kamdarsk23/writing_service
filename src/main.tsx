@@ -15,6 +15,13 @@ function hashLooksLikePasswordRecovery(hash: string): boolean {
   }
 }
 
+function searchLooksLikePasswordRecovery(search: string): boolean {
+  if (!search) return false;
+  const params = new URLSearchParams(search.startsWith('?') ? search.slice(1) : search);
+  const type = params.get('type')?.toLowerCase();
+  return type === 'recovery' || params.has('token_hash');
+}
+
 /**
  * Supabase recovery links use a hash like #access_token=...&type=recovery — not a
  * React Router path. We must:
@@ -30,6 +37,7 @@ async function prepareAuthUrlForHashRouter(): Promise<void> {
     const { pathname, search } = window.location;
     let h = window.location.hash;
     const recoveryFromUrl = hashLooksLikePasswordRecovery(h);
+    const recoveryFromSearch = searchLooksLikePasswordRecovery(search);
     // Truncated Site URL in Supabase often becomes .../update-passwo
     if (h === '#/auth/update-passwo' || h.startsWith('#/auth/update-passwo?')) {
       window.history.replaceState(null, '', `${pathname}${search}#/auth/update-password`);
@@ -57,13 +65,13 @@ async function prepareAuthUrlForHashRouter(): Promise<void> {
 
     let sessionOut = session;
     // Session can lag URL parsing on cold start; don't send recovery users to /auth too early.
-    if ((passwordRecovery || recoveryFromUrl) && !sessionOut) {
+    if ((passwordRecovery || recoveryFromUrl || recoveryFromSearch) && !sessionOut) {
       await new Promise((r) => setTimeout(r, 250));
       const { data: later } = await supabase.auth.getSession();
       sessionOut = later.session ?? null;
     }
 
-    if (sessionOut && (passwordRecovery || recoveryFromUrl)) {
+    if (sessionOut && (passwordRecovery || recoveryFromUrl || recoveryFromSearch)) {
       window.history.replaceState(null, '', `${pathname}${search}#/auth/update-password`);
       return;
     }
