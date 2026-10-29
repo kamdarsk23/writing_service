@@ -270,6 +270,7 @@ export function DashboardPage() {
             onNewWork={() => setShowCreateWork(true)}
             onNewFolder={() => setShowCreateFolder(true)}
             onNewQTree={() => setShowCreateQTree(true)}
+            onFree={() => navigate('/free')}
           />
           <div className="flex items-center gap-1.5">
             <label className="text-xs text-gray-500">Columns</label>

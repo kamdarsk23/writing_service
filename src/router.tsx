@@ -2,6 +2,7 @@ import { createHashRouter, Navigate, Outlet } from 'react-router-dom';
 import { AuthPage } from './pages/AuthPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { EditorPage } from './pages/EditorPage';
+import { FreePadPage } from './pages/FreePadPage';
 import { QTreePage } from './pages/QTreePage';
 import { QTreeEditorPage } from './pages/QTreeEditorPage';
 import { UpdatePasswordPage } from './pages/UpdatePasswordPage';
@@ -59,6 +60,14 @@ export const router = createHashRouter([
         element: (
           <ProtectedRoute>
             <EditorPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'free',
+        element: (
+          <ProtectedRoute>
+            <FreePadPage />
           </ProtectedRoute>
         ),
       },

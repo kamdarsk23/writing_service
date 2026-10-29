@@ -4,9 +4,10 @@ interface NewButtonDropdownProps {
   onNewWork: () => void;
   onNewFolder: () => void;
   onNewQTree: () => void;
+  onFree: () => void;
 }
 
-export function NewButtonDropdown({ onNewWork, onNewFolder, onNewQTree }: NewButtonDropdownProps) {
+export function NewButtonDropdown({ onNewWork, onNewFolder, onNewQTree, onFree }: NewButtonDropdownProps) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -58,6 +59,15 @@ export function NewButtonDropdown({ onNewWork, onNewFolder, onNewQTree }: NewBut
             className="w-full text-left px-3 py-1.5 text-sm cursor-pointer hover:bg-gray-100"
           >
             New Q Tree
+          </button>
+          <button
+            onClick={() => {
+              onFree();
+              setOpen(false);
+            }}
+            className="w-full text-left px-3 py-1.5 text-sm cursor-pointer hover:bg-gray-100"
+          >
+            Free
           </button>
         </div>
       )}

@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import { inviteUser } from '../../lib/inviteUser';
 import { deleteUserByEmail } from '../../lib/deleteUser';
+import { GuideButton } from './GuideButton';
 
 export function Header() {
   const { user, signOut } = useAuth();
@@ -56,9 +57,10 @@ export function Header() {
 
   return (
     <>
-      <header className="h-12 border-b flex items-center justify-between px-4 bg-white shrink-0">
+      <header className="h-12 border-b flex items-center justify-between px-4 bg-white shrink-0 relative z-20">
       <span className="font-semibold">{user?.email}'s Writing Workspace</span>
       <div className="flex items-center gap-3 text-sm">
+        <GuideButton />
         {isOwner && (
           <button
             onClick={() => {
